@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Re-Air Report Viewer"
+description = "A self-hostable report review workspace for uploading CSV reports, searching clips, inspecting date-sensitive flags, and printing clip sheets with persistent storage and account access."
+version = "1.0.0"
+id = "artifacts/reair-viewer"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25646
+
+[services.development]
+run = "pnpm --filter @workspace/reair-viewer run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/reair-viewer", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/reair-viewer/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25646"
+BASE_PATH = "/"

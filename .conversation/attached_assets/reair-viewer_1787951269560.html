@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Re-Air Report Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --rack:#0E1114; --panel:#151A20; --panel-2:#1B222A; --panel-3:#212A34;
+  --rule:#242D37; --rule-soft:#1D242C;
+  --ink:#DDE4EB; --ink-dim:#8B98A7; --ink-faint:#5E6B79;
+  --cyan:#35B9D6; --cyan-dim:#1E5f6e;
+  --amber:#E8A33D; --amber-dim:#6b4a17;
+  --clear:#5FA88C;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --hdr:56px; --bar:52px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--rack);color:var(--ink);font-family:var(--body);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow:hidden;
+}
+button,input,select{font:inherit;color:inherit}
+mark{background:rgba(53,185,214,.24);color:#EAF6FA;border-radius:2px;padding:0 1px}
+
+/* ---------- header ---------- */
+.hdr{
+  height:var(--hdr);display:flex;align-items:center;gap:18px;padding:0 18px;
+  border-bottom:1px solid var(--rule);background:linear-gradient(180deg,#161C23,#11161B);
+}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand .mark{
+  font-family:var(--cond);font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  font-size:14px;color:var(--ink);white-space:nowrap;
+}
+.brand .mark i{font-style:normal;color:var(--amber)}
+.brand .src{
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.stats{margin-left:auto;display:flex;align-items:center;gap:0}
+.stat{padding:0 16px;border-left:1px solid var(--rule);text-align:right;line-height:1.15}
+.stat:first-child{border-left:0}
+.stat b{font-family:var(--mono);font-size:16px;font-weight:600;display:block}
+.stat span{font-family:var(--cond);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.stat.flagged b{color:var(--amber)}
+.btn{
+  background:var(--panel-2);border:1px solid var(--rule);color:var(--ink-dim);
+  border-radius:5px;padding:7px 13px;cursor:pointer;font-family:var(--cond);
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.btn:hover{border-color:var(--ink-faint);color:var(--ink);background:var(--panel-3)}
+.btn.ghost{background:none;color:var(--ink-faint);margin-left:-6px}
+.brand .src{cursor:default}
+.btn:focus-visible,.seg button:focus-visible,input:focus-visible,select:focus-visible,
+.clip:focus-visible,.tc:focus-visible,.chip-link:focus-visible,.marker:focus-visible{
+  outline:2px solid var(--cyan);outline-offset:2px
+}
+
+/* ---------- filter bar ---------- */
+.bar{
+  height:var(--bar);display:flex;align-items:center;gap:12px;padding:0 18px;
+  border-bottom:1px solid var(--rule);background:var(--panel);
+}
+.search{position:relative;flex:0 1 320px;display:flex;align-items:center}
+.search input{
+  width:100%;background:var(--rack);border:1px solid var(--rule);border-radius:5px;
+  padding:8px 30px 8px 32px;font-size:13.5px;
+}
+.search input::placeholder{color:var(--ink-faint)}
+.search input::-webkit-search-cancel-button{display:none}
+.search input:focus{border-color:var(--cyan-dim);outline:none}
+.search .ico{position:absolute;left:10px;color:var(--ink-faint);display:flex}
+.search .slash{
+  position:absolute;right:8px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+  border:1px solid var(--rule);border-radius:3px;padding:0 5px;pointer-events:none;
+}
+.seg{display:flex;border:1px solid var(--rule);border-radius:5px;overflow:hidden;background:var(--rack)}
+.seg button{
+  background:none;border:0;border-left:1px solid var(--rule);padding:8px 12px;cursor:pointer;
+  font-family:var(--cond);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+  font-weight:600;color:var(--ink-faint);white-space:nowrap;transition:color .15s,background .15s;
+}
+.seg button:first-child{border-left:0}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--panel-3);color:var(--ink)}
+.seg button[aria-pressed="true"][data-f="review"]{color:var(--amber);box-shadow:inset 0 -2px 0 var(--amber)}
+.seg button[aria-pressed="true"][data-f="dates"]{color:var(--cyan);box-shadow:inset 0 -2px 0 var(--cyan)}
+.seg button[aria-pressed="true"][data-f="clear"]{color:var(--clear);box-shadow:inset 0 -2px 0 var(--clear)}
+.seg button[aria-pressed="true"][data-f="all"]{box-shadow:inset 0 -2px 0 var(--ink-faint)}
+.bar select option{background:#151A20;color:#DDE4EB}
+.bar select{
+  background:var(--rack);border:1px solid var(--rule);border-radius:5px;padding:8px 10px;font-size:13px;
+}
+.count{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-faint);white-space:nowrap}
+
+/* ---------- layout ---------- */
+.wrap{display:grid;grid-template-columns:360px 1fr;height:calc(100vh - var(--hdr) - var(--bar))}
+@media (min-width:1800px){.wrap{grid-template-columns:420px 1fr}}
+.list{border-right:1px solid var(--rule);overflow-y:auto;background:var(--panel)}
+.detail{overflow-y:auto;background:var(--rack);scroll-behavior:smooth}
+
+/* ---------- clip list ---------- */
+.group{
+  position:sticky;top:0;z-index:2;background:#12171D;border-bottom:1px solid var(--rule);
+  padding:6px 16px;font-family:var(--cond);font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-faint);
+}
+.clip{
+  display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  border-bottom:1px solid var(--rule-soft);padding:11px 16px 11px 14px;
+  border-left:3px solid transparent;transition:background .12s;
+}
+.clip:hover{background:var(--panel-2)}
+.clip[aria-current="true"]{background:var(--panel-3);border-left-color:var(--amber)}
+.clip[aria-current="true"].is-clear{border-left-color:var(--clear)}
+.clip .id{font-family:var(--mono);font-size:12.5px;font-weight:500;color:var(--ink);letter-spacing:-.01em}
+.clip .rev{
+  font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);border:1px solid var(--rule);
+  border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;
+}
+.clip .sub{
+  font-size:12px;color:var(--ink-dim);margin-top:3px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;
+}
+.clip .pips{display:flex;align-items:center;gap:10px;margin-top:6px;font-family:var(--mono);font-size:11px}
+.pip{display:flex;align-items:center;gap:5px;color:var(--ink-faint)}
+.pip i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block;font-style:normal}
+.pip.amber{color:var(--amber)}
+.pip.cyan{color:var(--cyan)}
+.pip.clear{color:#4b6b60}
+.empty{padding:40px 20px;text-align:center;color:var(--ink-faint);font-size:13.5px}
+
+/* ---------- detail ---------- */
+.pane{max-width:2600px;padding:24px 34px 80px}
+.pane-top{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+h1{
+  font-family:var(--mono);font-size:24px;font-weight:600;margin:0;letter-spacing:-.02em;line-height:1.2;
+}
+.h1sub{font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px}
+.verdict{
+  margin-left:auto;display:flex;align-items:center;gap:8px;border-radius:5px;padding:7px 12px;
+  font-family:var(--cond);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap;
+}
+.verdict.review{background:rgba(232,163,61,.1);border:1px solid var(--amber-dim);color:var(--amber)}
+.verdict.clear{background:rgba(95,168,140,.08);border:1px solid #2c4d41;color:var(--clear)}
+.verdict i{width:7px;height:7px;border-radius:50%;background:currentColor;display:block;font-style:normal}
+.verdict.review i{animation:blip 2.4s ease-in-out infinite}
+@keyframes blip{0%,72%,100%{opacity:1}80%,92%{opacity:.25}}
+
+.meta{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
+  background:var(--rule-soft);border:1px solid var(--rule-soft);border-radius:6px;overflow:hidden;margin:22px 0 26px;
+}
+.meta div{background:var(--panel);padding:11px 14px;min-width:0}
+.meta dt{font-family:var(--cond);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 4px}
+.meta dd{margin:0;font-size:13.5px;line-height:1.45}
+.meta dd.none{color:var(--ink-faint);font-style:italic}
+.chip-link{
+  background:var(--panel-3);border:1px solid var(--rule);border-radius:20px;padding:1px 9px;
+  font-size:12px;cursor:pointer;margin:0 4px 4px 0;display:inline-block;transition:border-color .15s,color .15s;
+}
+.chip-link:hover{border-color:var(--cyan-dim);color:var(--cyan)}
+
+h2{
+  font-family:var(--cond);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:9px;
+}
+h2 .n{font-family:var(--mono);font-size:11px;color:var(--ink-faint);border:1px solid var(--rule);border-radius:3px;padding:0 5px;letter-spacing:0}
+h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+section{margin-bottom:30px}
+
+/* ---------- signature: timecode spine ---------- */
+.spine{
+  position:relative;height:126px;background:var(--panel);border:1px solid var(--rule);
+  border-radius:6px;padding:0 22px;margin-bottom:8px;
+}
+.spine .track{position:absolute;left:22px;right:22px;top:56px;height:1px;background:var(--rule)}
+.spine .tick{position:absolute;top:51px;width:1px;height:11px;background:var(--rule)}
+.spine .tick.minor{top:54px;height:5px;opacity:.55}
+.spine .tlab{
+  position:absolute;top:100px;transform:translateX(-50%);font-family:var(--mono);
+  font-size:10px;color:var(--ink-faint);white-space:nowrap;
+}
+.lane{position:absolute;left:22px;right:22px}
+.lane.top{top:12px;height:40px}
+.lane.bot{top:60px;height:34px}
+.marker{
+  position:absolute;top:0;bottom:0;background:none;border:0;padding:0;cursor:pointer;
+  transform:translateX(-50%);width:15px;display:flex;flex-direction:column;align-items:center;
+}
+.marker .stem{width:1px;flex:1;background:currentColor;opacity:.4}
+.marker .dot{
+  width:7px;height:7px;border-radius:50%;background:currentColor;flex:none;
+  box-shadow:0 0 0 3px var(--panel);transition:transform .15s;
+}
+.lane.top .marker{flex-direction:column-reverse;color:var(--amber)}
+.lane.bot .marker{color:var(--cyan)}
+.marker:hover .dot,.marker.active .dot{transform:scale(1.6)}
+.marker:hover .stem,.marker.active .stem{opacity:1}
+.spine-legend{
+  display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+  margin-bottom:26px;padding-left:2px;flex-wrap:wrap;
+}
+.spine-legend span{display:flex;align-items:center;gap:6px}
+.spine-legend i{width:6px;height:6px;border-radius:50%;display:block;font-style:normal}
+.spine-empty{
+  display:flex;align-items:center;justify-content:center;height:126px;background:var(--panel);
+  border:1px dashed var(--rule);border-radius:6px;color:var(--ink-faint);font-size:13px;margin-bottom:26px;
+}
+
+/* ---------- flag notes ---------- */
+.notes{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.note{
+  display:flex;gap:12px;align-items:flex-start;background:var(--panel);
+  border:1px solid var(--rule-soft);border-left:2px solid var(--rule);
+  border-radius:5px;padding:10px 13px;
+}
+.note.amber{border-left-color:var(--amber)}
+.note.cyan{border-left-color:var(--cyan)}
+.tc{
+  font-family:var(--mono);font-size:12px;font-weight:500;background:var(--rack);border:1px solid var(--rule);
+  border-radius:4px;padding:2px 7px;cursor:pointer;flex:none;width:64px;text-align:center;
+  transition:background .15s,border-color .15s;
+}
+.note.amber .tc{color:var(--amber)}
+.note.cyan .tc{color:var(--cyan)}
+.note .tc:hover{border-color:currentColor}
+.note p{margin:0;font-size:14px;line-height:1.5;color:#C6D0DA}
+.note.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{border-color:var(--cyan);background:rgba(53,185,214,.12)}100%{background:var(--panel)}}
+.note.amber.flash{animation-name:flashA}
+@keyframes flashA{0%{border-color:var(--amber);background:rgba(232,163,61,.12)}100%{background:var(--panel)}}
+
+/* ---------- synopsis ---------- */
+.syn{display:grid;gap:22px 40px;grid-template-columns:1fr;max-width:1360px}
+.syn h3{
+  font-family:var(--cond);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink-faint);margin:0 0 8px;
+}
+.syn .body{margin:0;font-size:14.5px;line-height:1.72;color:#BCC7D2}
+.syn .short .body{font-size:15.5px;line-height:1.65;color:#D6DEE6}
+.syn .body.none{color:var(--ink-faint);font-style:italic;font-size:13.5px}
+@media (min-width:1200px){
+  .syn{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:0 36px}
+  .syn .full{border-left:1px solid var(--rule-soft);padding-left:36px}
+}
+
+/* ---------- placeholder + drop ---------- */
+.placeholder{
+  height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--ink-faint);text-align:center;padding:30px;
+}
+.placeholder .big{font-family:var(--cond);font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.placeholder .keys{font-family:var(--mono);font-size:12px;line-height:2}
+.placeholder kbd{border:1px solid var(--rule);border-radius:3px;padding:1px 6px;background:var(--panel)}
+#drop{
+  position:fixed;inset:0;z-index:50;background:rgba(14,17,20,.92);display:none;
+  align-items:center;justify-content:center;
+}
+#drop.on{display:flex}
+#drop .box{
+  border:2px dashed var(--cyan-dim);border-radius:10px;padding:48px 64px;text-align:center;
+  font-family:var(--cond);font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);
+}
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel-3);
+  border:1px solid var(--rule);border-left:3px solid var(--amber);border-radius:5px;
+  padding:11px 16px;font-size:13.5px;z-index:60;max-width:520px;
+}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  .wrap{grid-template-columns:1fr;height:auto}
+  .list{max-height:44vh;border-right:0;border-bottom:1px solid var(--rule)}
+  .detail{overflow:visible}
+  .pane{padding:20px 18px 60px}
+  .stats .stat.span{display:none}
+  .bar{flex-wrap:wrap;height:auto;padding:10px 14px;gap:9px}
+  .search{flex:1 1 100%}
+  .count{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
+@media print{
+  body{background:#fff;color:#111;overflow:visible}
+  .hdr,.bar,.list,#drop,.verdict i,.btn{display:none}
+  .tc{color:#333!important;border-color:#bbb}
+  .wrap{display:block;height:auto}
+  .detail{overflow:visible}
+  .pane{max-width:none;padding:0}
+  .meta div,.spine,.spine-empty,.note{background:#fff;border-color:#bbb}
+  .notes,.syn{display:block}
+  .syn .full{border-left:0;padding-left:0;margin-top:14px}
+  .note{margin-bottom:6px}
+
+  h1,.note p,.syn .body{color:#111}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand">
+    <span class="mark">Re<i>·</i>Air Report</span>
+    <span class="src" id="srcName">—</span>
+  </div>
+  <div class="stats" id="stats"></div>
+  <button class="btn" id="loadBtn">Add report</button>
+  <button class="btn ghost" id="clearBtn" hidden>Clear</button>
+  <input type="file" id="file" accept=".csv,text/csv" multiple hidden>
+</header>
+
+<div class="bar">
+  <label class="search">
+    <span class="ico" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    </span>
+    <input id="q" type="search" placeholder="Search clip ID, people, synopsis, flags" aria-label="Search clips">
+    <span class="slash">/</span>
+  </label>
+  <div class="seg" role="group" aria-label="Filter clips">
+    <button data-f="all" aria-pressed="true">All</button>
+    <button data-f="review" aria-pressed="false">Needs review</button>
+    <button data-f="dates" aria-pressed="false">Dates mentioned</button>
+    <button data-f="clear" aria-pressed="false">No flags</button>
+  </div>
+  <select id="sort" aria-label="Sort clips">
+    <option value="new">Newest clip date</option>
+    <option value="old">Oldest clip date</option>
+    <option value="flags">Most flags</option>
+    <option value="id">Clip ID A–Z</option>
+  </select>
+  <span class="count" id="count"></span>
+</div>
+
+<div class="wrap">
+  <nav class="list" id="list" aria-label="Clips"></nav>
+  <main class="detail" id="detail"></main>
+</div>
+
+<div id="drop"><div class="box">Drop report CSVs to add them</div></div>
+
+<script>
+"use strict";
+
+/* ---------------- CSV parsing (RFC 4180, multiline-safe) ---------------- */
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/, "");
+  const rows=[]; let row=[], field="", i=0, quoted=false;
+  while(i<text.length){
+    const c=text[i];
+    if(quoted){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i+=2;continue;} quoted=false;i++;continue; }
+      field+=c;i++;continue;
+    }
+    if(c==='"'){quoted=true;i++;continue;}
+    if(c===','){row.push(field);field="";i++;continue;}
+    if(c==='\r'){i++;continue;}
+    if(c==='\n'){row.push(field);rows.push(row);row=[];field="";i++;continue;}
+    field+=c;i++;
+  }
+  if(field.length||row.length){row.push(field);rows.push(row);}
+  if(!rows.length) return [];
+  const head=rows.shift().map(h=>h.trim());
+  return rows.filter(r=>r.some(v=>v.trim()!=="")).map(r=>{
+    const o={}; head.forEach((h,n)=>o[h]=(r[n]??"").trim()); return o;
+  });
+}
+
+/* ---------------- model ---------------- */
+const COL={
+  id:"ClipID", air:"Air Dates", host:"Host", guests:"Guests",
+  short:"Short Synopsis", long:"Long Synopsis",
+  dates:"Any dates mentioned (timecode where)",
+  sens:"Any date sensitive material (timecode where)"
+};
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function tcSeconds(tc){
+  const p=tc.split(":").map(Number);
+  return p.length===3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+p[1];
+}
+function parseNotes(blob){
+  if(!blob) return [];
+  return blob.split("\n").map(l=>l.trim()).filter(Boolean).map(line=>{
+    const m=line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—–-]\s*(.*)$/);
+    return m ? {tc:m[1], secs:tcSeconds(m[1]), text:m[2]} : {tc:"", secs:null, text:line};
+  }).sort((a,b)=>(a.secs??1e9)-(b.secs??1e9));
+}
+function fromClipId(id){
+  const m=id.match(/P(\d{2})(\d{2})(\d{2})(R\d*)?-(\d{2})(\d{2})(\d{2})/);
+  if(!m) return {date:null,rev:null};
+  const d=new Date(2000+ +m[1], +m[2]-1, +m[3]);
+  return {date:isNaN(d)?null:d, rev:m[4]||null, time:`${m[5]}:${m[6]}:${m[7]}`};
+}
+function fmtDate(d){ return d ? `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` : null; }
+function parseAir(s){
+  const o={original:null,last:null};
+  if(!s) return o;
+  const a=s.match(/Original:\s*([\d-]+)/), b=s.match(/Last:\s*([\d-]+)/);
+  if(a) o.original=a[1]; if(b) o.last=b[1];
+  if(!a&&!b) o.original=s;
+  return o;
+}
+function isoPretty(iso){
+  const m=iso&&iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${MONTHS[+m[2]-1]} ${+m[3]}, ${m[1]}` : (iso||null);
+}
+function people(s){ return (s||"").split(";").map(x=>x.trim()).filter(Boolean); }
+
+function build(rows,src){
+  return rows.filter(r=>r[COL.id]).map(r=>{
+    const meta=fromClipId(r[COL.id]);
+    const sens=parseNotes(r[COL.sens]), dates=parseNotes(r[COL.dates]);
+    const air=parseAir(r[COL.air]);
+    const short=r[COL.short]||"", long=r[COL.long]||"";
+    return {
+      id:r[COL.id], src:src, date:meta.date, rev:meta.rev, time:meta.time,
+      original:air.original, last:air.last,
+      hosts:people(r[COL.host]), guests:people(r[COL.guests]),
+      short, long: long&&long!==short ? long : "", dupLong: !!long&&long===short,
+      sens, dates, flags:sens.length+dates.length,
+      hay:[r[COL.id],r[COL.host],r[COL.guests],short,long,r[COL.sens],r[COL.dates],r[COL.air],src||""].join(" ").toLowerCase()
+    };
+  });
+}
+
+/* ---------------- state ---------------- */
+let CLIPS=[], VIEW=[], SOURCES=[], sel=null, filter="all", sortBy="new", query="";
+const $=s=>document.querySelector(s);
+const listEl=$("#list"), detailEl=$("#detail");
+
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function hl(s){
+  const e=esc(s);
+  if(!query) return e;
+  const rx=new RegExp("("+query.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","ig");
+  return e.replace(rx,"<mark>$1</mark>");
+}
+
+/* ---------------- render: list ---------------- */
+function applyFilters(){
+  const q=query.toLowerCase();
+  VIEW=CLIPS.filter(c=>{
+    if(q && !c.hay.includes(q)) return false;
+    if(filter==="review") return c.sens.length>0;
+    if(filter==="dates") return c.dates.length>0;
+    if(filter==="clear") return c.flags===0;
+    return true;
+  });
+  const t=d=>d?d.getTime():0;
+  VIEW.sort((a,b)=>
+    sortBy==="new"   ? t(b.date)-t(a.date) :
+    sortBy==="old"   ? t(a.date)-t(b.date) :
+    sortBy==="flags" ? b.flags-a.flags || t(b.date)-t(a.date) :
+                       a.id.localeCompare(b.id));
+  renderList();
+  $("#count").textContent = VIEW.length===CLIPS.length
+    ? `${CLIPS.length} clips`
+    : `${VIEW.length} of ${CLIPS.length} clips`;
+}
+
+function renderList(){
+  if(!VIEW.length){
+    listEl.innerHTML = CLIPS.length
+      ? `<p class="empty">No clips match.<br>Clear the search or choose a different filter.</p>`
+      : `<p class="empty">No report loaded.<br>Drop a report CSV to start.</p>`;
+    return;
+  }
+  let html="", lastGroup="";
+  for(const c of VIEW){
+    const g = (sortBy==="new"||sortBy==="old")
+      ? (c.date ? `${MONTHS[c.date.getMonth()]} ${c.date.getFullYear()}` : "No date in clip ID")
+      : "";
+    if(g && g!==lastGroup){ html+=`<div class="group">${g}</div>`; lastGroup=g; }
+    const who=[...c.hosts,...c.guests].join(", ");
+    const sub=who || (c.original?`Aired ${isoPretty(c.original)}`:"No people listed");
+    html+=`<button class="clip${c.flags?"":" is-clear"}" data-id="${esc(c.id)}"
+        aria-current="${sel===c.id}" ${sel===c.id?'':''}>
+      <div><span class="id">${hl(c.id)}</span>${c.rev?`<span class="rev">${esc(c.rev)}</span>`:""}</div>
+      <div class="sub">${hl(sub)}</div>
+      <div class="pips">
+        ${c.sens.length?`<span class="pip amber"><i></i>${c.sens.length} date-sensitive</span>`:""}
+        ${c.dates.length?`<span class="pip cyan"><i></i>${c.dates.length} dates</span>`:""}
+        ${c.flags?"":`<span class="pip clear"><i></i>no flags</span>`}
+      </div>
+    </button>`;
+  }
+  listEl.innerHTML=html;
+}
+
+/* ---------------- render: spine ---------------- */
+function spine(c){
+  const all=[...c.sens,...c.dates].filter(n=>n.secs!=null);
+  if(!all.length) return `<div class="spine-empty">No timecoded flags on this clip</div>`;
+  const maxS=Math.max(...all.map(n=>n.secs));
+  const span=Math.max(1800, Math.ceil((maxS+120)/300)*300);
+  const pos=s=>(s/span*100).toFixed(3);
+  let ticks="";
+  const at=s=>`calc(22px + ${pos(s)}% - ${(pos(s)/100*44).toFixed(2)}px)`;
+  for(let s=0;s<=span;s+=300){
+    if(s%600){ ticks+=`<div class="tick minor" style="left:${at(s)}"></div>`; continue; }
+    ticks+=`<div class="tick" style="left:${at(s)}"></div>
+      <div class="tlab" style="left:${at(s)}">${Math.floor(s/60)}:00</div>`;
+  }
+  const mk=(notes,lane)=>notes.filter(n=>n.secs!=null).map((n,i)=>
+    `<button class="marker" data-lane="${lane}" data-tc="${esc(n.tc)}"
+       style="left:${pos(n.secs)}%" title="${esc(n.tc)} — ${esc(n.text)}"
+       aria-label="${esc(n.tc)}: ${esc(n.text)}"><span class="dot"></span><span class="stem"></span></button>`).join("");
+  return `<div class="spine">
+      <div class="track"></div>${ticks}
+      <div class="lane top">${mk(c.sens,"sens")}</div>
+      <div class="lane bot">${mk(c.dates,"dates")}</div>
+    </div>
+    <div class="spine-legend">
+      <span><i style="background:var(--amber)"></i>above the line — date-sensitive material</span>
+      <span><i style="background:var(--cyan)"></i>below the line — dates mentioned</span>
+      <span>scale 0:00 – ${Math.floor(span/60)}:00</span>
+    </div>`;
+}
+
+function notes(list,kind){
+  return `<div class="notes">`+list.map(n=>`<div class="note ${kind}" id="n-${kind}-${esc(n.tc).replace(/:/g,"")}">
+    ${n.tc?`<button class="tc" data-tc="${esc(n.tc)}" data-lane="${kind==="amber"?"sens":"dates"}">${esc(n.tc)}</button>`:`<span class="tc" style="border-color:transparent">—</span>`}
+    <p>${hl(n.text)}</p></div>`).join("")+`</div>`;
+}
+
+function renderDetail(){
+  const c=CLIPS.find(x=>x.id===sel);
+  if(!c){
+    detailEl.innerHTML=`<div class="placeholder">
+      <div class="big">Select a clip</div>
+      <p>Pick a clip on the left to see its flags, people, and synopsis.</p>
+      <div class="keys"><kbd>↑</kbd> <kbd>↓</kbd> move &nbsp; <kbd>/</kbd> search &nbsp; <kbd>Esc</kbd> clear</div>
+    </div>`;
+    return;
+  }
+  const clipDate=fmtDate(c.date);
+  const meta=[
+    ["Original air", isoPretty(c.original)],
+    ["Last air", isoPretty(c.last)],
+    ["Host", c.hosts.length?c.hosts.map(h=>`<button class="chip-link">${hl(h)}</button>`).join(""):null],
+    ["Guests", c.guests.length?c.guests.map(g=>`<button class="chip-link">${hl(g)}</button>`).join(""):null],
+    ...(SOURCES.length>1 ? [["Source report", `<span style="font-family:var(--mono);font-size:12px">${hl(c.src||"—")}</span>`]] : [])
+  ].map(([k,v])=>`<div><dt>${k}</dt><dd class="${v?"":"none"}">${v||"Not listed"}</dd></div>`).join("");
+
+  detailEl.innerHTML=`<div class="pane">
+    <div class="pane-top">
+      <div>
+        <h1>${hl(c.id)}</h1>
+        <div class="h1sub">${clipDate?`Clip date ${clipDate}`:"No date encoded in clip ID"}${c.rev?` · ${esc(c.rev)} version`:""}${c.time?` · ${esc(c.time)}`:""}</div>
+      </div>
+      <div class="verdict ${c.sens.length?"review":"clear"}"><i></i>${
+        c.sens.length ? `Needs review — ${c.sens.length} item${c.sens.length>1?"s":""}` : "No date-sensitive items flagged"
+      }</div>
+    </div>
+
+    <dl class="meta">${meta}</dl>
+
+    <section>
+      <h2>Flag timeline</h2>
+      ${spine(c)}
+    </section>
+
+    ${c.sens.length?`<section>
+      <h2>Date-sensitive material <span class="n">${c.sens.length}</span></h2>
+      ${notes(c.sens,"amber")}
+    </section>`:""}
+
+    ${c.dates.length?`<section>
+      <h2>Dates mentioned <span class="n">${c.dates.length}</span></h2>
+      ${notes(c.dates,"cyan")}
+    </section>`:""}
+
+    <section>
+      <h2>Synopsis</h2>
+      <div class="syn">
+        <div class="short"><h3>Short</h3><p class="body">${hl(c.short)}</p></div>
+        <div class="full"><h3>Full</h3>${
+          c.long ? `<p class="body">${hl(c.long)}</p>`
+                 : `<p class="body none">${c.dupLong?"This report repeats the short synopsis here.":"Not provided in this report."}</p>`
+        }</div>
+      </div>
+    </section>
+
+    <button class="btn" onclick="window.print()">Print clip sheet</button>
+  </div>`;
+  detailEl.scrollTop=0;
+}
+
+function select(id){
+  sel=id;
+  if(window.innerWidth<=900 && sel) setTimeout(()=>detailEl.scrollIntoView({block:"start",behavior:"smooth"}),0);
+  listEl.querySelectorAll(".clip").forEach(b=>b.setAttribute("aria-current", String(b.dataset.id===id)));
+  renderDetail();
+}
+
+/* ---------------- interactions ---------------- */
+listEl.addEventListener("click",e=>{
+  const b=e.target.closest(".clip"); if(b) select(b.dataset.id);
+});
+detailEl.addEventListener("click",e=>{
+  const chip=e.target.closest(".chip-link");
+  if(chip){ $("#q").value=chip.textContent.trim(); query=chip.textContent.trim(); applyFilters(); return; }
+  const m=e.target.closest(".marker"), t=e.target.closest(".tc[data-tc]");
+  const src=m||t; if(!src) return;
+  const kind=src.dataset.lane==="sens"?"amber":"cyan";
+  const note=document.getElementById(`n-${kind}-${src.dataset.tc.replace(/:/g,"")}`);
+  if(note){
+    note.scrollIntoView({block:"center",behavior:"smooth"});
+    note.classList.remove("flash"); void note.offsetWidth; note.classList.add("flash");
+  }
+  detailEl.querySelectorAll(".marker").forEach(x=>x.classList.remove("active"));
+  const mark=detailEl.querySelector(`.marker[data-lane="${src.dataset.lane}"][data-tc="${src.dataset.tc}"]`);
+  if(mark) mark.classList.add("active");
+});
+$("#q").addEventListener("input",e=>{query=e.target.value.trim();applyFilters();renderDetail();});
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{
+  filter=b.dataset.f;
+  document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  applyFilters();
+}));
+$("#sort").addEventListener("change",e=>{sortBy=e.target.value;applyFilters();});
+
+document.addEventListener("keydown",e=>{
+  const typing=/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
+  if(e.key==="/"&&!typing){e.preventDefault();$("#q").focus();return;}
+  if(e.key==="Escape"){$("#q").value="";query="";applyFilters();renderDetail();$("#q").blur();return;}
+  if(typing) return;
+  if(["ArrowDown","ArrowUp","j","k"].includes(e.key)){
+    e.preventDefault();
+    const i=VIEW.findIndex(c=>c.id===sel);
+    const step=(e.key==="ArrowDown"||e.key==="j")?1:-1;
+    const next=VIEW[Math.max(0,Math.min(VIEW.length-1,(i<0?0:i+step)))];
+    if(next){ select(next.id); listEl.querySelector(`[data-id="${CSS.escape(next.id)}"]`)?.scrollIntoView({block:"nearest"}); }
+  }
+});
+
+/* ---------------- loading ---------------- */
+function toast(msg){
+  const el=document.createElement("div");
+  el.className="toast"; el.textContent=msg; document.body.appendChild(el);
+  setTimeout(()=>el.remove(),6000);
+}
+function stats(){
+  const rev=CLIPS.filter(c=>c.sens.length).length;
+  const flags=CLIPS.reduce((n,c)=>n+c.flags,0);
+  const ds=CLIPS.map(c=>c.date).filter(Boolean).sort((a,b)=>a-b);
+  const span=ds.length?`${MONTHS[ds[0].getMonth()]} ${ds[0].getFullYear()} – ${MONTHS[ds[ds.length-1].getMonth()]} ${ds[ds.length-1].getFullYear()}`:"—";
+  $("#stats").innerHTML=`
+    ${SOURCES.length>1?`<div class="stat"><b>${SOURCES.length}</b><span>reports</span></div>`:""}
+    <div class="stat"><b>${CLIPS.length}</b><span>clips</span></div>
+    <div class="stat flagged"><b>${rev}</b><span>need review</span></div>
+    <div class="stat"><b>${flags}</b><span>flags</span></div>
+    <div class="stat span"><b style="font-size:12.5px;line-height:1.5">${span}</b><span>clip dates</span></div>`;
+  const el=$("#srcName");
+  el.textContent = SOURCES.length>1 ? `${SOURCES.length} reports · ${SOURCES[SOURCES.length-1]}` : (SOURCES[0]||"No report loaded");
+  el.title = SOURCES.join("\n");
+  $("#clearBtn").hidden = CLIPS.length===0;
+}
+function load(rows,name){
+  const incoming=build(rows,name);
+  if(!incoming.length){ toast("No clips found in "+name+". A re-air report needs a ClipID column plus the synopsis and timecode columns."); return; }
+  const index=new Map(CLIPS.map(c=>[c.id,c]));
+  let added=0, updated=0;
+  for(const c of incoming){
+    if(index.has(c.id)){ Object.assign(index.get(c.id),c); updated++; }
+    else{ index.set(c.id,c); CLIPS.push(c); added++; }
+  }
+  if(!SOURCES.includes(name)) SOURCES.push(name);
+  stats(); applyFilters();
+  if(!sel || !CLIPS.some(c=>c.id===sel)){ if(VIEW.length) select(VIEW[0].id); else renderDetail(); }
+  else renderDetail();
+  if(SOURCES.length>1||updated){
+    toast(`${name}: ${added} clip${added===1?"":"s"} added${updated?`, ${updated} refreshed`:""} · ${CLIPS.length} total`);
+  }
+}
+function clearAll(){
+  CLIPS=[];SOURCES=[];sel=null;stats();applyFilters();
+  detailEl.innerHTML=`<div class="placeholder"><div class="big">Load a re-air report</div>
+    <p>Drop one or more report CSVs anywhere on this page, or use Add report.<br>
+    Loading is additive — each report merges into the set, matching on clip ID.</p></div>`;
+}
+function readFile(f){
+  const r=new FileReader();
+  r.onload=()=>{ try{ load(parseCSV(r.result), f.name); }catch(err){ toast("That file didn't parse as CSV: "+err.message); } };
+  r.onerror=()=>toast("Couldn't read that file. Try again or pick a different copy.");
+  r.readAsText(f);
+}
+$("#loadBtn").addEventListener("click",()=>$("#file").click());
+$("#file").addEventListener("change",e=>{ [...e.target.files].forEach(readFile); e.target.value=""; });
+$("#clearBtn").addEventListener("click",clearAll);
+const drop=$("#drop");
+let dragDepth=0;
+window.addEventListener("dragenter",e=>{e.preventDefault();dragDepth++;drop.classList.add("on");});
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("dragleave",e=>{if(--dragDepth<=0){dragDepth=0;drop.classList.remove("on");}});
+window.addEventListener("drop",e=>{
+  e.preventDefault();dragDepth=0;drop.classList.remove("on");
+  [...e.dataTransfer.files].forEach(readFile);
+});
+
+/* ---------------- boot ---------------- */
+clearAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+- [Docker pnpm builds](docker-pnpm-builds.md) — pin the workspace-compatible pnpm version in Docker to avoid blocked esbuild lifecycle scripts.

@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Account access
+  - name: reports
+    description: Uploaded report management
+  - name: clips
+    description: Parsed clip reports
+  - name: dashboard
+    description: Workspace summaries
 paths:
   /healthz:
     get:
@@ -24,7 +32,145 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the current signed-in user
+      responses:
+        "200":
+          description: Current session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionState"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Invalid or already registered email
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in to an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "200":
+          description: Signed-in session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Invalid email or password
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "204":
+          description: Signed out
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List uploaded reports
+      responses:
+        "200":
+          description: Reports owned by the current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Report"
+    post:
+      operationId: uploadReport
+      tags: [reports]
+      summary: Upload and parse a CSV report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportUpload"
+      responses:
+        "201":
+          description: Uploaded report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Report could not be parsed
+  /reports/{reportId}:
+    delete:
+      operationId: deleteReport
+      tags: [reports]
+      summary: Delete an uploaded report
+      parameters:
+        - $ref: "#/components/parameters/ReportId"
+      responses:
+        "204":
+          description: Report deleted
+        "404":
+          description: Report not found
+  /clips:
+    get:
+      operationId: listClips
+      tags: [clips]
+      summary: List all clips from the current user's reports
+      responses:
+        "200":
+          description: Parsed clips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Clip"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get workspace counts and date range
+      responses:
+        "200":
+          description: Workspace summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
 components:
+  parameters:
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema:
+        type: number
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +179,158 @@ components:
           type: string
       required:
         - status
+    User:
+      type: object
+      properties:
+        id:
+          type: number
+        email:
+          type: string
+        createdAt:
+          type: string
+      required: [id, email, createdAt]
+    AuthCredentials:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 8
+      required: [email, password]
+    AuthSession:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+      required: [user]
+    SessionState:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        user:
+          type: ["object", "null"]
+          properties:
+            id:
+              type: number
+            email:
+              type: string
+            createdAt:
+              type: string
+          required: [id, email, createdAt]
+      required: [authenticated, user]
+    ReportUpload:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+      required: [name, content]
+    Report:
+      type: object
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        clipCount:
+          type: number
+        uploadedAt:
+          type: string
+      required: [id, name, clipCount, uploadedAt]
+    Note:
+      type: object
+      properties:
+        tc:
+          type: string
+        secs:
+          type: ["number", "null"]
+        text:
+          type: string
+      required: [tc, secs, text]
+    Clip:
+      type: object
+      properties:
+        id:
+          type: string
+        reportId:
+          type: number
+        source:
+          type: string
+        date:
+          type: ["string", "null"]
+        revision:
+          type: ["string", "null"]
+        time:
+          type: ["string", "null"]
+        originalAir:
+          type: ["string", "null"]
+        lastAir:
+          type: ["string", "null"]
+        hosts:
+          type: array
+          items: { type: string }
+        guests:
+          type: array
+          items: { type: string }
+        shortSynopsis:
+          type: string
+        longSynopsis:
+          type: string
+        duplicateLongSynopsis:
+          type: boolean
+        sensitiveNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        dateNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        flagCount:
+          type: number
+      required:
+        - id
+        - reportId
+        - source
+        - date
+        - revision
+        - time
+        - originalAir
+        - lastAir
+        - hosts
+        - guests
+        - shortSynopsis
+        - longSynopsis
+        - duplicateLongSynopsis
+        - sensitiveNotes
+        - dateNotes
+        - flagCount
+    DashboardSummary:
+      type: object
+      properties:
+        reportCount:
+          type: number
+        clipCount:
+          type: number
+        reviewCount:
+          type: number
+        flagCount:
+          type: number
+        earliestClipDate:
+          type: ["string", "null"]
+        latestClipDate:
+          type: ["string", "null"]
+      required:
+        - reportCount
+        - clipCount
+        - reviewCount
+        - flagCount
+        - earliestClipDate
+        - latestClipDate
 
