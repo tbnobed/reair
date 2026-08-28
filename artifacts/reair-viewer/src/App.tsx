@@ -214,30 +214,9 @@ function AuthPage({ mode: initialMode }: { mode: AuthMode }) {
 
   return (
     <main className="min-h-[100dvh] bg-[#e6eaf0] text-foreground">
-      <div className="grid min-h-[100dvh] lg:grid-cols-[minmax(390px,0.82fr)_1.18fr]">
-        <section className="relative hidden overflow-hidden bg-sidebar px-12 py-12 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
-          <div className="absolute inset-0 opacity-30 instrument-grid" />
-          <div className="relative">
-            <Logo />
-            <div className="mt-28 max-w-md">
-              <p className="mono mb-5 text-[11px] uppercase tracking-[0.25em] text-primary">Broadcast operations / 04</p>
-              <h1 className="text-5xl font-extrabold leading-[1.02] tracking-[-0.06em]">
-                Make the second
-                <span className="block text-primary">air visible.</span>
-              </h1>
-              <p className="mt-7 max-w-sm text-[15px] leading-7 text-sidebar-foreground/65">
-                A quiet, exacting workspace for teams who need to know what ran, when it ran, and what deserves another look.
-              </p>
-            </div>
-          </div>
-          <div className="relative flex items-end justify-between border-t border-sidebar-border pt-5 text-xs text-sidebar-foreground/50">
-            <span className="mono">SELF-HOSTED / PRIVATE</span>
-            <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-accent" /> System ready</span>
-          </div>
-        </section>
-        <section className="instrument-grid flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-10">
+      <section className="instrument-grid flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-10">
           <div className="w-full max-w-[430px] fade-up">
-            <div className="mb-10 lg:hidden"><Logo /></div>
+            <div className="mb-10"><Logo /></div>
             <div className="mb-9">
               <p className="mono mb-3 text-[10px] uppercase tracking-[0.22em] text-accent">Your operations desk</p>
               <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-foreground">
@@ -277,8 +256,7 @@ function AuthPage({ mode: initialMode }: { mode: AuthMode }) {
             </div>
             <p className="mt-12 text-center text-[11px] text-muted-foreground/70">Re-Air keeps your broadcast review data on your own infrastructure.</p>
           </div>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }
