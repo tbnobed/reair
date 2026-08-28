@@ -16,12 +16,18 @@ rebuilding containers does not remove application data.
 cp .env.example .env
 openssl rand -hex 32
 # Put one generated value in POSTGRES_PASSWORD and another in SESSION_SECRET.
+# Set ADMIN_EMAIL and ADMIN_PASSWORD to seed the first login account.
 docker compose up -d --build
 ```
 
 Open `http://SERVER_IP:8080` or the port set by `APP_PORT`.
-On the first visit, create an account. Passwords are salted and hashed before
-they are stored; the browser receives only an HTTP-only session cookie.
+If `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, the API creates that account
+after the database schema is ready. Seeding is idempotent: an existing account
+is never overwritten. You can remove `ADMIN_PASSWORD` from `.env` after the
+first successful start; the account and its password remain in the database.
+If the seed variables are omitted, create an account from the login page.
+Passwords are salted and hashed before they are stored; the browser receives
+only an HTTP-only session cookie.
 
 ## Updates and backups
 

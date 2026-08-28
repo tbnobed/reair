@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import type { NextFunction, Request, Response } from "express";
 import { and, eq, gt } from "drizzle-orm";
 import { db, sessionsTable, usersTable } from "@workspace/db";
+import { logger } from "./logger";
 
 const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE = "reair_session";
@@ -41,6 +42,43 @@ export async function verifyPassword(
   const derived = (await scrypt(password, Buffer.from(saltHex, "hex"), 64)) as Buffer;
   const expected = Buffer.from(hashHex, "hex");
   return derived.length === expected.length && timingSafeEqual(derived, expected);
+}
+
+export async function seedAdminUser(): Promise<void> {
+  const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const configuredPassword = process.env.ADMIN_PASSWORD;
+
+  if (!configuredEmail && !configuredPassword) return;
+  if (!configuredEmail || !configuredPassword) {
+    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be set together.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configuredEmail)) {
+    throw new Error("ADMIN_EMAIL must be a valid email address.");
+  }
+  if (configuredPassword.length < 8) {
+    throw new Error("ADMIN_PASSWORD must be at least 8 characters long.");
+  }
+
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, configuredEmail))
+    .limit(1);
+
+  if (existing[0]) {
+    logger.info({ email: configuredEmail }, "Configured admin account already exists");
+    return;
+  }
+
+  await db
+    .insert(usersTable)
+    .values({
+      email: configuredEmail,
+      passwordHash: await hashPassword(configuredPassword),
+    })
+    .onConflictDoNothing({ target: usersTable.email });
+
+  logger.info({ email: configuredEmail }, "Seeded configured admin account");
 }
 
 export async function createSession(
