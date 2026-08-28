@@ -43,6 +43,7 @@ Self-hosted report review desk for uploading, searching, and reviewing re-air CS
 - Upload, index, search, filter, sort, inspect, print, and delete re-air report CSVs.
 - Review flagged moments, date-sensitive notes, people, air dates, and synopsis content.
 - Persist account, report, and parsed clip data across container restarts.
+- Preserve visual and interaction parity with the supplied original HTML viewer: dark rack-style workstation, compact header/filter bars, split clip list/detail pane, amber/cyan flag timeline, and IBM Plex typography.
 
 ## User preferences
 
