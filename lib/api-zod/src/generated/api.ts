@@ -31,29 +31,6 @@ export const GetCurrentUserResponse = zod.object({
 
 
 /**
- * @summary Create an account
- */
-export const registerBodyEmailMin = 3;
-
-export const registerBodyPasswordMin = 8;
-
-
-
-export const RegisterBody = zod.object({
-  "email": zod.string().min(registerBodyEmailMin),
-  "password": zod.string().min(registerBodyPasswordMin)
-})
-
-export const RegisterResponse = zod.object({
-  "user": zod.object({
-  "id": zod.number(),
-  "email": zod.string(),
-  "createdAt": zod.string()
-})
-})
-
-
-/**
  * @summary Sign in to an account
  */
 export const loginBodyEmailMin = 3;

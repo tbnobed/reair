@@ -25,7 +25,7 @@ If `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, the API creates that account
 after the database schema is ready. Seeding is idempotent: an existing account
 is never overwritten. You can remove `ADMIN_PASSWORD` from `.env` after the
 first successful start; the account and its password remain in the database.
-If the seed variables are omitted, create an account from the login page.
+Users must be created by an administrator; public self-registration is disabled.
 Passwords are salted and hashed before they are stored; the browser receives
 only an HTTP-only session cookie.
 

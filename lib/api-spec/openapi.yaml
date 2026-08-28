@@ -44,26 +44,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SessionState"
-  /auth/register:
-    post:
-      operationId: register
-      tags: [auth]
-      summary: Create an account
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AuthCredentials"
-      responses:
-        "201":
-          description: Account created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthSession"
-        "400":
-          description: Invalid or already registered email
   /auth/login:
     post:
       operationId: login

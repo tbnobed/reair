@@ -23,7 +23,6 @@ import {
   Menu,
   MoreHorizontal,
   PanelRightOpen,
-  Plus,
   Radio,
   RefreshCw,
   Search,
@@ -44,12 +43,11 @@ import {
   useListReports,
   useLogin,
   useLogout,
-  useRegister,
   useUploadReport,
   type Clip,
   type Report,
 } from '@workspace/api-client-react';
-import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
+import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { Toaster } from '@/components/ui/toaster';
@@ -57,7 +55,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 
 const queryClient = new QueryClient();
 
-type AuthMode = 'login' | 'register';
 type SortKey = 'date' | 'source' | 'flags';
 
 const formatDate = (date: string | null | undefined, withTime = false) => {
@@ -124,12 +121,11 @@ function SessionRouter() {
 
   if (isLoading) return <FullPageLoading label="Checking your desk session" />;
 
-  const authRoute = location === '/login' || location === '/register';
   if (isError || !session?.authenticated) {
-    return <AuthPage mode={location === '/register' ? 'register' : 'login'} />;
+    return <AuthPage />;
   }
 
-  if (authRoute) {
+  if (location === '/login') {
     return <RedirectToWorkspace />;
   }
 
@@ -168,25 +164,15 @@ function FullPageLoading({ label }: { label: string }) {
   );
 }
 
-function AuthPage({ mode: initialMode }: { mode: AuthMode }) {
+function AuthPage() {
   const [, setLocation] = useLocation();
   const queryClientLocal = useQueryClient();
-  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
   const [formError, setFormError] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const login = useLogin();
-  const register = useRegister();
-
-  useEffect(() => {
-    setMode(initialMode);
-    setFormError('');
-    setIsComplete(false);
-  }, [initialMode]);
-
-  const pending = login.isPending || register.isPending;
+  const pending = login.isPending;
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError('');
@@ -194,12 +180,7 @@ function AuthPage({ mode: initialMode }: { mode: AuthMode }) {
       setFormError('Enter a valid email and a password of at least 8 characters.');
       return;
     }
-    if (mode === 'register' && password !== confirmation) {
-      setFormError('Passwords do not match.');
-      return;
-    }
-    const mutation = mode === 'login' ? login : register;
-    mutation.mutate(
+    login.mutate(
       { data: { email: email.trim(), password } },
       {
         onSuccess: (session) => {
@@ -220,10 +201,10 @@ function AuthPage({ mode: initialMode }: { mode: AuthMode }) {
             <div className="mb-9">
               <p className="mono mb-3 text-[10px] uppercase tracking-[0.22em] text-accent">Your operations desk</p>
               <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-foreground">
-                {mode === 'login' ? 'Sign in to Re-Air.' : 'Create your desk.'}
+                Sign in to Re-Air.
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {mode === 'login' ? 'Pick up exactly where your review left off.' : 'Keep your reports close, controlled, and ready for review.'}
+                Pick up exactly where your review left off.
               </p>
             </div>
             <form onSubmit={submit} className="space-y-5" noValidate>
@@ -233,28 +214,16 @@ function AuthPage({ mode: initialMode }: { mode: AuthMode }) {
               </label>
               <label className="block">
                 <span className="mb-2 block text-xs font-bold uppercase tracking-[0.1em] text-foreground/70">Password</span>
-                <input data-testid="input-auth-password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" className="h-12 w-full rounded-xl border border-input bg-card px-4 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" />
+                <input data-testid="input-auth-password" autoComplete="current-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" className="h-12 w-full rounded-xl border border-input bg-card px-4 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" />
               </label>
-              {mode === 'register' && (
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.1em] text-foreground/70">Confirm password</span>
-                  <input data-testid="input-auth-confirm-password" autoComplete="new-password" type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Repeat your password" className="h-12 w-full rounded-xl border border-input bg-card px-4 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" />
-                </label>
-              )}
               {formError && <div data-testid="status-auth-error" className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
               {isComplete && <div data-testid="status-auth-success" className="flex items-center gap-2 rounded-xl border border-accent/25 bg-accent/10 px-3.5 py-3 text-sm text-accent"><Check className="size-4" /> Session ready. Opening your desk.</div>}
               <button data-testid="button-auth-submit" type="submit" disabled={pending || isComplete} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-sidebar font-bold text-sidebar-foreground shadow-md transition hover:-translate-y-0.5 hover:bg-sidebar/90 focus:outline-none focus:ring-4 focus:ring-primary/25 disabled:cursor-wait disabled:opacity-60">
-                {pending ? <LoaderCircle className="size-4 animate-spin" /> : mode === 'login' ? <LogOut className="size-4 rotate-180" /> : <Plus className="size-4" />}
-                {pending ? 'Checking credentials…' : mode === 'login' ? 'Enter report desk' : 'Create account'}
+                {pending ? <LoaderCircle className="size-4 animate-spin" /> : <LogOut className="size-4 rotate-180" />}
+                {pending ? 'Checking credentials…' : 'Enter report desk'}
               </button>
             </form>
-            <div className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-              {mode === 'login' ? 'New to this desk?' : 'Already have an account?'}{' '}
-              <Link data-testid="link-auth-toggle" href={mode === 'login' ? '/register' : '/login'} className="font-bold text-accent underline-offset-4 hover:underline">
-                {mode === 'login' ? 'Create an account' : 'Sign in instead'}
-              </Link>
-            </div>
-            <p className="mt-12 text-center text-[11px] text-muted-foreground/70">Re-Air keeps your broadcast review data on your own infrastructure.</p>
+            <p className="mt-8 text-center text-[11px] text-muted-foreground/70">Re-Air keeps your broadcast review data on your own infrastructure.</p>
           </div>
       </section>
     </main>
