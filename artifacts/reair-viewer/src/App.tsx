@@ -518,6 +518,14 @@ function ClipDetail({ clip, query, onSearch }: { clip: Clip; query: string; onSe
     </dl>
 
     <section className="detail-section">
+      <h2>Synopsis</h2>
+      <div className="synopsis">
+        <div><h3>Short</h3><p>{clip.shortSynopsis ? highlight(clip.shortSynopsis, query) : <span className="none">Not provided in this report.</span>}</p></div>
+        <div className="synopsis-full"><h3>Full</h3><p>{clip.longSynopsis ? highlight(clip.longSynopsis, query) : <span className="none">{clip.duplicateLongSynopsis ? 'This report repeats the short synopsis here.' : 'Not provided in this report.'}</span>}</p></div>
+      </div>
+    </section>
+
+    <section className="detail-section">
       <h2>Flag timeline</h2>
       {allNotes.length ? <><div className="timeline">
         <div className="timeline-inner"><div className="timeline-track" />
@@ -533,14 +541,6 @@ function ClipDetail({ clip, query, onSearch }: { clip: Clip; query: string; onSe
 
     {clip.sensitiveNotes.length > 0 && <NoteSection title="Date-sensitive material" notes={clip.sensitiveNotes} kind="amber" query={query} />}
     {clip.dateNotes.length > 0 && <NoteSection title="Dates mentioned" notes={clip.dateNotes} kind="cyan" query={query} />}
-
-    <section className="detail-section">
-      <h2>Synopsis</h2>
-      <div className="synopsis">
-        <div><h3>Short</h3><p>{clip.shortSynopsis ? highlight(clip.shortSynopsis, query) : <span className="none">Not provided in this report.</span>}</p></div>
-        <div className="synopsis-full"><h3>Full</h3><p>{clip.longSynopsis ? highlight(clip.longSynopsis, query) : <span className="none">{clip.duplicateLongSynopsis ? 'This report repeats the short synopsis here.' : 'Not provided in this report.'}</span>}</p></div>
-      </div>
-    </section>
 
     <button className="btn print-button" onClick={() => window.print()}><Printer /> Print clip sheet</button>
   </div>;
