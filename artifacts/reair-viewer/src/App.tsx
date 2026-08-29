@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   FilePlus2,
@@ -51,6 +52,7 @@ const queryClient = new QueryClient();
 
 type FilterKey = 'all' | 'review' | 'dates' | 'clear';
 type SortKey = 'new' | 'old' | 'flags' | 'id';
+type ArchiveView = 'list' | 'calendar';
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const roleLabels: Record<UserRole, string> = {
@@ -79,6 +81,22 @@ function formatDateSpan(clips: Clip[]) {
   const dates = clips.map((clip) => dateValue(clip.date)).filter((value): value is Date => Boolean(value)).sort((a, b) => a.getTime() - b.getTime());
   if (!dates.length) return '—';
   return `${monthNames[dates[0].getMonth()]} ${dates[0].getFullYear()} – ${monthNames[dates[dates.length - 1].getMonth()]} ${dates[dates.length - 1].getFullYear()}`;
+}
+
+function monthKey(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthStart(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), 1, 12);
+}
+
+function monthLabel(value: Date) {
+  return `${monthNames[value.getMonth()]} ${value.getFullYear()}`;
+}
+
+function dateKey(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 }
 
 function textForClip(clip: Clip) {
@@ -207,6 +225,9 @@ function Workspace() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [sort, setSort] = useState<SortKey>('new');
+  const [archiveView, setArchiveView] = useState<ArchiveView>('list');
+  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
+  const [calendarMonth, setCalendarMonth] = useState('');
   const [showReports, setShowReports] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const detailRef = useRef<HTMLElement>(null);
@@ -233,6 +254,12 @@ function Workspace() {
       return (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0);
     });
   }, [clips, filter, query, sort]);
+
+  useEffect(() => {
+    if (calendarMonth || !view.length) return;
+    const firstDatedClip = view.map((clip) => dateValue(clip.date)).find((value): value is Date => Boolean(value));
+    setCalendarMonth(monthKey(monthStart(firstDatedClip ?? new Date())));
+  }, [calendarMonth, view]);
 
   useEffect(() => {
     if (selectedId && view.some((clip) => clip.id === selectedId)) return;
@@ -277,6 +304,7 @@ function Workspace() {
     setFilter('all');
     setSort('new');
     setSelectedId(null);
+    setCollapsedMonths({});
   };
 
   const signOut = () => logout.mutate(undefined, {
@@ -300,11 +328,11 @@ function Workspace() {
       <button className="btn ghost header-signout" data-testid="button-sign-out" onClick={signOut}><LogOut /> Sign out</button>
     </header>
 
-    <ViewerToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} count={view.length} total={clips.length} onClear={clearView} />
+    <ViewerToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} archiveView={archiveView} setArchiveView={setArchiveView} count={view.length} total={clips.length} onClear={clearView} />
 
     <div className="viewer-layout">
-      <nav className="clip-list" aria-label="Clips">
-        {clipsLoading ? <div className="empty-list"><LoaderCircle className="spin" /> Loading clips…</div> : clipsError ? <div className="empty-list"><p>Could not load clips.</p><button className="btn" onClick={() => void refetchClips()}>Retry</button></div> : <ClipList clips={view} query={query} selectedId={selectedId} onSelect={selectClip} hasClips={clips.length > 0} />}
+      <nav className={archiveView === 'calendar' ? 'calendar-pane' : 'clip-list'} aria-label={archiveView === 'calendar' ? 'Calendar' : 'Clips'}>
+        {clipsLoading ? <div className="empty-list"><LoaderCircle className="spin" /> Loading clips…</div> : clipsError ? <div className="empty-list"><p>Could not load clips.</p><button className="btn" onClick={() => void refetchClips()}>Retry</button></div> : archiveView === 'calendar' ? <CalendarView clips={view} month={calendarMonth} setMonth={setCalendarMonth} selectedId={selectedId} onSelect={selectClip} /> : <ClipList clips={view} query={query} selectedId={selectedId} onSelect={selectClip} hasClips={clips.length > 0} collapsedMonths={collapsedMonths} setCollapsedMonths={setCollapsedMonths} />}
       </nav>
       <section ref={detailRef} className="clip-detail" aria-live="polite">
         {selected ? <ClipDetail clip={selected} query={query} onSearch={setQuery} /> : <Placeholder hasClips={clips.length > 0} />}
@@ -320,13 +348,15 @@ function Stat({ value, label, flagged = false, wide = false }: { value: number |
   return <div className={`viewer-stat${flagged ? ' flagged' : ''}${wide ? ' span' : ''}`}><b>{value}</b><span>{label}</span></div>;
 }
 
-function ViewerToolbar({ query, setQuery, filter, setFilter, sort, setSort, count, total, onClear }: {
+function ViewerToolbar({ query, setQuery, filter, setFilter, sort, setSort, archiveView, setArchiveView, count, total, onClear }: {
   query: string;
   setQuery: (value: string) => void;
   filter: FilterKey;
   setFilter: (value: FilterKey) => void;
   sort: SortKey;
   setSort: (value: SortKey) => void;
+  archiveView: ArchiveView;
+  setArchiveView: (value: ArchiveView) => void;
   count: number;
   total: number;
   onClear: () => void;
@@ -354,6 +384,10 @@ function ViewerToolbar({ query, setQuery, filter, setFilter, sort, setSort, coun
     <div className="segmented" role="group" aria-label="Filter clips">
       {([['all', 'All'], ['review', 'Needs review'], ['dates', 'Dates mentioned'], ['clear', 'No flags']] as [FilterKey, string][]).map(([key, label]) => <button key={key} data-f={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>)}
     </div>
+    <div className="segmented view-switch" role="group" aria-label="Archive view">
+      <button data-testid="button-list-view" aria-pressed={archiveView === 'list'} onClick={() => setArchiveView('list')}>List</button>
+      <button data-testid="button-calendar-view" aria-pressed={archiveView === 'calendar'} onClick={() => setArchiveView('calendar')}><CalendarDays /> Calendar</button>
+    </div>
     <select data-testid="select-clip-sort" aria-label="Sort clips" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
       <option value="new">Newest clip date</option>
       <option value="old">Oldest clip date</option>
@@ -364,19 +398,21 @@ function ViewerToolbar({ query, setQuery, filter, setFilter, sort, setSort, coun
   </div>;
 }
 
-function ClipList({ clips, query, selectedId, onSelect, hasClips }: { clips: Clip[]; query: string; selectedId: string | null; onSelect: (id: string) => void; hasClips: boolean }) {
+function ClipList({ clips, query, selectedId, onSelect, hasClips, collapsedMonths, setCollapsedMonths }: { clips: Clip[]; query: string; selectedId: string | null; onSelect: (id: string) => void; hasClips: boolean; collapsedMonths: Record<string, boolean>; setCollapsedMonths: React.Dispatch<React.SetStateAction<Record<string, boolean>>> }) {
   if (!clips.length) return <p className="empty-list">{hasClips ? <>No clips match.<br />Clear the search or choose a different filter.</> : <>No report loaded.<br />Add a report to start.</>}</p>;
   let lastGroup = '';
   return <div>{clips.map((clip) => {
     const parsed = dateValue(clip.date);
-    const group = parsed ? `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}` : 'No date in clip ID';
+    const group = parsed ? monthLabel(parsed) : 'No date in clip ID';
+    const groupKey = parsed ? monthKey(parsed) : 'no-date';
     const showGroup = group !== lastGroup;
     lastGroup = group;
+    const collapsed = Boolean(collapsedMonths[groupKey]);
     const people = [...clip.hosts, ...clip.guests].join(', ');
     const sub = people || (clip.originalAir ? `Aired ${formatDate(clip.originalAir)}` : 'No people listed');
     return <div key={clip.id}>
-      {showGroup && <div className="clip-group">{group}</div>}
-      <button data-clip-id={clip.id} className={`clip-item${clip.flagCount ? '' : ' is-clear'}${selectedId === clip.id ? ' selected' : ''}`} aria-current={selectedId === clip.id} onClick={() => onSelect(clip.id)}>
+      {showGroup && <button className="clip-group" aria-expanded={!collapsed} onClick={() => setCollapsedMonths((current) => ({ ...current, [groupKey]: !current[groupKey] }))}><span>{group}</span><ChevronRight className={collapsed ? '' : 'expanded'} /></button>}
+      {!collapsed && <button data-clip-id={clip.id} className={`clip-item${clip.flagCount ? '' : ' is-clear'}${selectedId === clip.id ? ' selected' : ''}`} aria-current={selectedId === clip.id} onClick={() => onSelect(clip.id)}>
         <div><span className="clip-id">{highlight(clip.id, query)}</span>{clip.revision && <span className="revision">{clip.revision}</span>}</div>
         <div className="clip-sub">{highlight(sub, query)}</div>
         <div className="clip-pips">
@@ -385,8 +421,68 @@ function ClipList({ clips, query, selectedId, onSelect, hasClips }: { clips: Cli
           {clip.flagCount === 0 && <span className="pip clear"><i />no flags</span>}
         </div>
       </button>
+      }
     </div>;
   })}</div>;
+}
+
+function CalendarView({ clips, month, setMonth, selectedId, onSelect }: { clips: Clip[]; month: string; setMonth: (value: string) => void; selectedId: string | null; onSelect: (id: string) => void }) {
+  const [focusDate, setFocusDate] = useState<string | null>(null);
+  const currentMonth = month ? new Date(`${month}-01T12:00:00`) : new Date();
+  const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1, 12);
+  const daysInCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const leadingDays = firstDay.getDay();
+  const clipsByDate = useMemo(() => {
+    const grouped = new Map<string, Clip[]>();
+    clips.forEach((clip) => {
+      const parsed = dateValue(clip.date);
+      if (!parsed) return;
+      const key = dateKey(parsed);
+      grouped.set(key, [...(grouped.get(key) ?? []), clip]);
+    });
+    return grouped;
+  }, [clips]);
+  const selectedClip = clips.find((clip) => clip.id === selectedId);
+  const activeDate = focusDate ?? (selectedClip?.date || null);
+  const activeClips = activeDate ? clipsByDate.get(activeDate) ?? [] : [];
+  const shiftMonth = (amount: number) => {
+    const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + amount, 1, 12);
+    setMonth(monthKey(next));
+    setFocusDate(null);
+  };
+  const selectDay = (key: string) => {
+    setFocusDate(key);
+    const first = clipsByDate.get(key)?.[0];
+    if (first) onSelect(first.id);
+  };
+
+  if (!clips.length) return <p className="empty-list">No clips match.<br />Clear the search or choose a different filter.</p>;
+
+  return <div className="calendar-view">
+    <div className="calendar-header">
+      <button className="icon-button" aria-label="Previous month" onClick={() => shiftMonth(-1)}><ChevronLeft /></button>
+      <h2>{monthLabel(currentMonth)}</h2>
+      <button className="icon-button" aria-label="Next month" onClick={() => shiftMonth(1)}><ChevronRight /></button>
+    </div>
+    <div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}</div>
+    <div className="calendar-grid">
+      {Array.from({ length: leadingDays + daysInCurrentMonth }, (_, index) => {
+        if (index < leadingDays) return <span className="calendar-blank" key={`blank-${index}`} />;
+        const day = index - leadingDays + 1;
+        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12);
+        const key = dateKey(date);
+        const dayClips = clipsByDate.get(key) ?? [];
+        const isSelected = activeDate === key;
+        return <button key={key} className={`calendar-day${dayClips.length ? ' has-clips' : ''}${isSelected ? ' selected' : ''}`} aria-label={`${monthLabel(currentMonth)} ${day}${dayClips.length ? `, ${dayClips.length} clip${dayClips.length === 1 ? '' : 's'}` : ''}`} aria-pressed={isSelected} onClick={() => selectDay(key)}>
+          <span>{day}</span>
+          {dayClips.length > 0 && <b>{dayClips.length}</b>}
+        </button>;
+      })}
+    </div>
+    <div className="calendar-day-heading">{activeDate ? formatDate(activeDate) : 'Select a day with clips'}</div>
+    {activeClips.length ? <div className="calendar-day-clips">{activeClips.map((clip) => <button key={clip.id} data-clip-id={clip.id} className={`calendar-clip${selectedId === clip.id ? ' selected' : ''}`} onClick={() => onSelect(clip.id)}><strong>{clip.id}</strong><span>{clip.sensitiveNotes.length} review · {clip.dateNotes.length} dates</span></button>)}</div> : <p className="calendar-empty">No clips on this day.</p>}
+    {clips.some((clip) => !dateValue(clip.date)) && <p className="calendar-undated">{clips.filter((clip) => !dateValue(clip.date)).length} undated clip{clips.filter((clip) => !dateValue(clip.date)).length === 1 ? '' : 's'} hidden from calendar</p>}
+  </div>;
 }
 
 function Placeholder({ hasClips }: { hasClips: boolean }) {

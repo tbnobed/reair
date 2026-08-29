@@ -169,6 +169,8 @@ mark { background: rgba(53, 185, 214, .24); color: #eaf6fa; border-radius: 2px; 
 .segmented button[data-f="review"][aria-pressed="true"] { color: var(--amber); box-shadow: inset 0 -2px 0 var(--amber); }
 .segmented button[data-f="dates"][aria-pressed="true"] { color: var(--cyan); box-shadow: inset 0 -2px 0 var(--cyan); }
 .segmented button[data-f="clear"][aria-pressed="true"] { color: var(--clear); box-shadow: inset 0 -2px 0 var(--clear); }
+.view-switch { flex: none; }
+.view-switch svg { width: 13px; height: 13px; }
 .viewer-toolbar select {
   padding: 8px 10px;
   border: 1px solid var(--rule);
@@ -186,8 +188,13 @@ mark { background: rgba(53, 185, 214, .24); color: #eaf6fa; border-radius: 2px; 
   position: sticky;
   top: 0;
   z-index: 2;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
   padding: 6px 16px;
   border-bottom: 1px solid var(--rule);
+  border-left: 0;
   background: #12171d;
   color: var(--ink-faint);
   font-family: var(--cond);
@@ -195,6 +202,9 @@ mark { background: rgba(53, 185, 214, .24); color: #eaf6fa; border-radius: 2px; 
   letter-spacing: .14em;
   text-transform: uppercase;
 }
+.clip-group:hover { background: #182027; color: var(--ink-dim); }
+.clip-group svg { width: 14px; height: 14px; transition: transform .15s ease; }
+.clip-group svg.expanded { transform: rotate(90deg); }
 .clip-item {
   display: block;
   width: 100%;
@@ -212,6 +222,29 @@ mark { background: rgba(53, 185, 214, .24); color: #eaf6fa; border-radius: 2px; 
 .clip-id { color: var(--ink); font-family: var(--mono); font-size: 12.5px; font-weight: 500; letter-spacing: -.01em; }
 .revision { margin-left: 6px; padding: 0 4px; border: 1px solid var(--rule); border-radius: 3px; color: var(--ink-faint); font-family: var(--mono); font-size: 9.5px; vertical-align: 1px; }
 .clip-sub { overflow: hidden; margin-top: 3px; color: var(--ink-dim); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-pane { overflow-y: auto; border-right: 1px solid var(--rule); background: var(--panel); }
+.calendar-view { padding: 18px 16px 28px; }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.calendar-header h2 { margin: 0; color: var(--ink); font-family: var(--cond); font-size: 16px; letter-spacing: .08em; text-transform: uppercase; }
+.calendar-header .icon-button { width: 28px; height: 28px; border-color: var(--rule); background: var(--rack); }
+.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.calendar-weekdays { margin-bottom: 5px; color: var(--ink-faint); font-family: var(--mono); font-size: 9px; text-align: center; text-transform: uppercase; }
+.calendar-day, .calendar-blank { min-width: 0; min-height: 39px; }
+.calendar-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 3px 1px; border: 1px solid transparent; border-radius: 4px; background: var(--rack); color: var(--ink-faint); font-family: var(--mono); font-size: 11px; }
+.calendar-day:hover { border-color: var(--rule); color: var(--ink); }
+.calendar-day.has-clips { border-color: var(--cyan-dim); color: var(--ink); }
+.calendar-day.has-clips b { color: var(--cyan); font-size: 9px; font-weight: 500; }
+.calendar-day.selected { border-color: var(--amber); background: var(--panel-3); color: var(--ink); box-shadow: inset 0 -2px 0 var(--amber); }
+.calendar-day.selected b { color: var(--amber); }
+.calendar-day-heading { margin: 22px 0 8px; padding-bottom: 7px; border-bottom: 1px solid var(--rule); color: var(--ink-faint); font-family: var(--cond); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.calendar-day-clips { display: grid; gap: 6px; }
+.calendar-clip { display: block; min-width: 0; padding: 8px 9px; border: 1px solid var(--rule-soft); border-left: 2px solid var(--cyan-dim); border-radius: 4px; background: var(--rack); text-align: left; }
+.calendar-clip:hover, .calendar-clip.selected { border-color: var(--cyan-dim); background: var(--panel-2); }
+.calendar-clip strong, .calendar-clip span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-clip strong { color: var(--ink); font-family: var(--mono); font-size: 11px; }
+.calendar-clip span { margin-top: 3px; color: var(--ink-faint); font-family: var(--mono); font-size: 9px; }
+.calendar-empty, .calendar-undated { color: var(--ink-faint); font-family: var(--mono); font-size: 10px; line-height: 1.5; }
+.calendar-undated { margin-top: 22px; padding-top: 10px; border-top: 1px solid var(--rule-soft); }
 .clip-pips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; font-family: var(--mono); font-size: 11px; }
 .pip { display: flex; align-items: center; gap: 5px; color: var(--ink-faint); }
 .pip i { display: block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -444,7 +477,7 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; backg
   .viewer-toolbar select { flex: 0 1 auto; }
   .result-count { margin-left: 0; }
   .viewer-layout { display: grid; grid-template-columns: 1fr; height: auto; }
-  .clip-list { max-height: 44vh; border-right: 0; border-bottom: 1px solid var(--rule); }
+  .clip-list, .calendar-pane { max-height: 44vh; border-right: 0; border-bottom: 1px solid var(--rule); }
   .clip-detail { min-height: 560px; overflow: visible; }
   .detail-pane { padding: 20px 18px 60px; }
   .detail-top h1 { font-size: 20px; }
@@ -459,7 +492,7 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; backg
 }
 @media print {
   body { overflow: visible; background: #fff; color: #111; }
-  .viewer-header, .viewer-toolbar, .clip-list, .print-button, .modal-backdrop { display: none; }
+  .viewer-header, .viewer-toolbar, .clip-list, .calendar-pane, .print-button, .modal-backdrop { display: none; }
   .viewer-layout { display: block; height: auto; }
   .clip-detail { overflow: visible; background: #fff; }
   .detail-pane { max-width: none; padding: 0; }
