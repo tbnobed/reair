@@ -415,6 +415,7 @@ function ClipList({ clips, query, selectedId, onSelect, hasClips, collapsedMonth
       {!collapsed && <button data-clip-id={clip.id} className={`clip-item${clip.flagCount ? '' : ' is-clear'}${selectedId === clip.id ? ' selected' : ''}`} aria-current={selectedId === clip.id} onClick={() => onSelect(clip.id)}>
         <div><span className="clip-id">{highlight(clip.id, query)}</span>{clip.revision && <span className="revision">{clip.revision}</span>}</div>
         <div className="clip-sub">{highlight(sub, query)}</div>
+        {clip.originalAir && <div className="clip-airdate">Original airdate · {formatDate(clip.originalAir)}</div>}
         <div className="clip-pips">
           {clip.sensitiveNotes.length > 0 && <span className="pip amber"><i />{clip.sensitiveNotes.length} date-sensitive</span>}
           {clip.dateNotes.length > 0 && <span className="pip cyan"><i />{clip.dateNotes.length} dates</span>}
