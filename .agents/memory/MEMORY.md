@@ -1,1 +1,2 @@
 - [Docker pnpm builds](docker-pnpm-builds.md) — pin the workspace-compatible pnpm version in Docker to avoid blocked esbuild lifecycle scripts.
+- [Re-Air role model](reair-role-model.md) — roles govern a shared archive; permissions are server-enforced and refreshed in active clients.

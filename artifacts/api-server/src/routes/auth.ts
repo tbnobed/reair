@@ -7,15 +7,20 @@ import {
   usersTable,
 } from "@workspace/db";
 import {
+  CreateUserBody,
   GetCurrentUserResponse,
   LoginBody,
   LoginResponse,
+  UpdateUserRoleBody,
+  UpdateUserRoleParams,
 } from "@workspace/api-zod";
 import {
   createSession,
   destroySession,
+  effectiveUserRole,
   getCurrentUser,
   hashPassword,
+  normalizeUserRole,
   verifyPassword,
   requireAdministrator,
   requireUser,
@@ -25,12 +30,17 @@ import { processPendingFileDeletions } from "../lib/file-cleanup";
 
 const router: IRouter = Router();
 
-function toUserResponse(user: { id: number; email: string; createdAt: Date }) {
+function toUserResponse(user: { id: number; email: string; role: string; createdAt: Date }) {
+  const role = effectiveUserRole({
+    email: user.email,
+    role: normalizeUserRole(user.role),
+  });
   return {
     id: user.id,
     email: user.email,
     createdAt: user.createdAt.toISOString(),
-    isAdmin: isAdministrator(user),
+    isAdmin: role === "admin",
+    role,
   };
 }
 
@@ -79,6 +89,7 @@ router.get("/auth/users", async (_request, response): Promise<void> => {
     .select({
       id: usersTable.id,
       email: usersTable.email,
+      role: usersTable.role,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -87,7 +98,7 @@ router.get("/auth/users", async (_request, response): Promise<void> => {
 });
 
 router.post("/auth/users", async (request, response): Promise<void> => {
-  const parsed = LoginBody.safeParse(request.body);
+  const parsed = CreateUserBody.safeParse(request.body);
   if (!parsed.success || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parsed.data.email.trim())) {
     response.status(400).json({ error: "Enter a valid email and a password of at least 8 characters." });
     return;
@@ -96,11 +107,16 @@ router.post("/auth/users", async (request, response): Promise<void> => {
   const email = parsed.data.email.trim().toLowerCase();
   const [created] = await db
     .insert(usersTable)
-    .values({ email, passwordHash: await hashPassword(parsed.data.password) })
+    .values({
+      email,
+      passwordHash: await hashPassword(parsed.data.password),
+      role: parsed.data.role,
+    })
     .onConflictDoNothing({ target: usersTable.email })
     .returning({
       id: usersTable.id,
       email: usersTable.email,
+      role: usersTable.role,
       createdAt: usersTable.createdAt,
     });
   if (!created) {
@@ -108,6 +124,50 @@ router.post("/auth/users", async (request, response): Promise<void> => {
     return;
   }
   response.status(201).json(toUserResponse(created));
+});
+
+router.patch("/auth/users/:userId", async (request, response): Promise<void> => {
+  const params = UpdateUserRoleParams.safeParse(request.params);
+  const body = UpdateUserRoleBody.safeParse(request.body);
+  if (!params.success || !body.success) {
+    response.status(400).json({ error: "Choose a valid user role." });
+    return;
+  }
+  if (params.data.userId === request.currentUser!.id && body.data.role !== "admin") {
+    response.status(400).json({ error: "You cannot remove your own administrator access." });
+    return;
+  }
+
+  const [target] = await db
+    .select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, params.data.userId))
+    .limit(1);
+  if (!target) {
+    response.sendStatus(404);
+    return;
+  }
+  const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (configuredEmail === target.email && body.data.role !== "admin") {
+    response.status(400).json({ error: "The configured administrator must keep the Administrator role." });
+    return;
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ role: body.data.role })
+    .where(eq(usersTable.id, params.data.userId))
+    .returning({
+      id: usersTable.id,
+      email: usersTable.email,
+      role: usersTable.role,
+      createdAt: usersTable.createdAt,
+    });
+  if (!updated) {
+    response.sendStatus(404);
+    return;
+  }
+  response.json(toUserResponse(updated));
 });
 
 router.delete("/auth/users/:userId", async (request, response): Promise<void> => {
@@ -121,13 +181,21 @@ router.delete("/auth/users/:userId", async (request, response): Promise<void> =>
     return;
   }
 
-  const deleted = await db.transaction(async (transaction) => {
+  const deleteResult = await db.transaction(async (transaction) => {
     const [user] = await transaction
-      .select({ id: usersTable.id })
+      .select({
+        id: usersTable.id,
+        email: usersTable.email,
+        role: usersTable.role,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .for("update");
-    if (!user) return false;
+    if (!user) return "not-found" as const;
+    if (isAdministrator({
+      email: user.email,
+      role: normalizeUserRole(user.role),
+    })) return "administrator" as const;
 
     const reports = await transaction
       .select({ storagePath: reportsTable.storagePath })
@@ -140,10 +208,14 @@ router.delete("/auth/users/:userId", async (request, response): Promise<void> =>
         .onConflictDoNothing({ target: pendingFileDeletionsTable.storagePath });
     }
     await transaction.delete(usersTable).where(eq(usersTable.id, userId));
-    return true;
+    return "deleted" as const;
   });
-  if (!deleted) {
+  if (deleteResult === "not-found") {
     response.sendStatus(404);
+    return;
+  }
+  if (deleteResult === "administrator") {
+    response.status(400).json({ error: "Change this administrator to another role before deleting the account." });
     return;
   }
   await processPendingFileDeletions();

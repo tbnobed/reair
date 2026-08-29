@@ -7,13 +7,6 @@
  */
 import type { UserRole } from './userRole';
 
-/**
- * @nullable
- */
-export type SessionStateUser = {
-  id: number;
-  email: string;
-  createdAt: string;
-  isAdmin: boolean;
+export interface UpdateUserRoleRequest {
   role: UserRole;
-} | null;
+}

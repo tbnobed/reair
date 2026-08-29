@@ -9,6 +9,7 @@
 export * from './authCredentials';
 export * from './authSession';
 export * from './clip';
+export * from './createUserRequest';
 export * from './dashboardSummary';
 export * from './healthStatus';
 export * from './note';
@@ -16,4 +17,6 @@ export * from './report';
 export * from './reportUpload';
 export * from './sessionState';
 export * from './sessionStateUser';
+export * from './updateUserRoleRequest';
 export * from './user';
+export * from './userRole';

@@ -26,7 +26,8 @@ export const GetCurrentUserResponse = zod.object({
   "id": zod.number(),
   "email": zod.string(),
   "createdAt": zod.string(),
-  "isAdmin": zod.boolean()
+  "isAdmin": zod.boolean(),
+  "role": zod.enum(['admin', 'editor', 'viewer'])
 }).nullable()
 })
 
@@ -50,36 +51,84 @@ export const LoginResponse = zod.object({
   "id": zod.number(),
   "email": zod.string(),
   "createdAt": zod.string(),
-  "isAdmin": zod.boolean()
+  "isAdmin": zod.boolean(),
+  "role": zod.enum(['admin', 'editor', 'viewer'])
 })
 })
-
-export const ListUsersResponseItem = zod.object({
-  "id": zod.number(),
-  "email": zod.string(),
-  "createdAt": zod.string(),
-  "isAdmin": zod.boolean()
-})
-export const ListUsersResponse = zod.array(ListUsersResponseItem)
-
-export const CreateUserBody = zod.object({
-  "email": zod.string().min(3),
-  "password": zod.string().min(8)
-})
-
-export const CreateUserResponse = ListUsersResponseItem
-
-export const DeleteUserParams = zod.object({
-  "userId": zod.coerce.number()
-})
-
-export const DeleteUserResponse = zod.void()
 
 
 /**
  * @summary Sign out
  */
 export const LogoutResponse = zod.void()
+
+
+/**
+ * @summary List users for the administrator
+ */
+export const ListUsersResponseItem = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "createdAt": zod.string(),
+  "isAdmin": zod.boolean(),
+  "role": zod.enum(['admin', 'editor', 'viewer'])
+})
+export const ListUsersResponse = zod.array(ListUsersResponseItem)
+
+
+/**
+ * @summary Create a user account for the administrator
+ */
+export const createUserBodyOneEmailMin = 3;
+
+export const createUserBodyOnePasswordMin = 8;
+
+
+
+export const CreateUserBody = zod.object({
+  "email": zod.string().min(createUserBodyOneEmailMin),
+  "password": zod.string().min(createUserBodyOnePasswordMin)
+}).and(zod.object({
+  "role": zod.enum(['admin', 'editor', 'viewer'])
+}))
+
+export const CreateUserResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "createdAt": zod.string(),
+  "isAdmin": zod.boolean(),
+  "role": zod.enum(['admin', 'editor', 'viewer'])
+})
+
+
+/**
+ * @summary Update a user's role
+ */
+export const UpdateUserRoleParams = zod.object({
+  "userId": zod.coerce.number()
+})
+
+export const UpdateUserRoleBody = zod.object({
+  "role": zod.enum(['admin', 'editor', 'viewer'])
+})
+
+export const UpdateUserRoleResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "createdAt": zod.string(),
+  "isAdmin": zod.boolean(),
+  "role": zod.enum(['admin', 'editor', 'viewer'])
+})
+
+
+/**
+ * @summary Delete a user account for the administrator
+ */
+export const DeleteUserParams = zod.object({
+  "userId": zod.coerce.number()
+})
+
+export const DeleteUserResponse = zod.void()
 
 
 /**
@@ -125,7 +174,7 @@ export const DeleteReportResponse = zod.void()
 
 
 /**
- * @summary List all clips from the current user's reports
+ * @summary List all clips from the shared workspace archive
  */
 export const ListClipsResponseItem = zod.object({
   "id": zod.string(),

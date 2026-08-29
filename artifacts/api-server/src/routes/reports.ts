@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { Router, type IRouter } from "express";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, clipsTable, reportsTable, usersTable } from "@workspace/db";
+import {
+  db,
+  clipsTable,
+  pendingFileDeletionsTable,
+  reportsTable,
+  usersTable,
+} from "@workspace/db";
 import {
   DeleteReportParams,
   ListClipsResponse,
@@ -11,7 +17,8 @@ import {
   UploadReportResponse,
 } from "@workspace/api-zod";
 import { parseReport, type ParsedNote } from "../lib/csv";
-import { requireUser } from "../lib/auth";
+import { requireReportEditor, requireUser } from "../lib/auth";
+import { processPendingFileDeletions } from "../lib/file-cleanup";
 
 const router: IRouter = Router();
 const storageRoot = process.env.STORAGE_DIR ?? "./data/uploads";
@@ -56,11 +63,9 @@ function clipResponse(clip: typeof clipsTable.$inferSelect) {
 router.use(requireUser);
 
 router.get("/reports", async (request, response): Promise<void> => {
-  const userId = request.currentUser!.id;
   const reports = await db
     .select()
     .from(reportsTable)
-    .where(eq(reportsTable.userId, userId))
     .orderBy(desc(reportsTable.uploadedAt));
   const counts = await db
     .select({
@@ -68,8 +73,6 @@ router.get("/reports", async (request, response): Promise<void> => {
       count: sql<number>`count(${clipsTable.id})`,
     })
     .from(clipsTable)
-    .innerJoin(reportsTable, eq(reportsTable.id, clipsTable.reportId))
-    .where(eq(reportsTable.userId, userId))
     .groupBy(clipsTable.reportId);
   const countByReport = new Map(counts.map((row) => [row.reportId, Number(row.count)]));
   response.json(
@@ -79,7 +82,7 @@ router.get("/reports", async (request, response): Promise<void> => {
   );
 });
 
-router.post("/reports", async (request, response): Promise<void> => {
+router.post("/reports", requireReportEditor, async (request, response): Promise<void> => {
   const parsed = UploadReportBody.safeParse(request.body);
   if (!parsed.success) {
     response.status(400).json({ error: "A report name and CSV file contents are required." });
@@ -148,41 +151,41 @@ router.post("/reports", async (request, response): Promise<void> => {
   }
 });
 
-router.delete("/reports/:reportId", async (request, response): Promise<void> => {
+router.delete("/reports/:reportId", requireReportEditor, async (request, response): Promise<void> => {
   const params = DeleteReportParams.safeParse(request.params);
   if (!params.success) {
     response.status(400).json({ error: "Invalid report id." });
     return;
   }
 
-  const [report] = await db
-    .select()
-    .from(reportsTable)
-    .where(
-      and(
-        eq(reportsTable.id, params.data.reportId),
-        eq(reportsTable.userId, request.currentUser!.id),
-      ),
-    )
-    .limit(1);
-  if (!report) {
+  const deleted = await db.transaction(async (transaction) => {
+    const [report] = await transaction
+      .select()
+      .from(reportsTable)
+      .where(eq(reportsTable.id, params.data.reportId))
+      .for("update");
+    if (!report) return false;
+
+    await transaction
+      .insert(pendingFileDeletionsTable)
+      .values({ storagePath: report.storagePath })
+      .onConflictDoNothing({ target: pendingFileDeletionsTable.storagePath });
+    await transaction.delete(reportsTable).where(eq(reportsTable.id, report.id));
+    return true;
+  });
+  if (!deleted) {
     response.status(404).json({ error: "Report not found." });
     return;
   }
 
-  await db.delete(reportsTable).where(eq(reportsTable.id, report.id));
-  await unlink(report.storagePath).catch((error: unknown) => {
-    request.log.warn({ err: error, reportId: report.id }, "Original report file was already missing");
-  });
+  await processPendingFileDeletions();
   response.sendStatus(204);
 });
 
-router.get("/clips", async (request, response): Promise<void> => {
+router.get("/clips", async (_request, response): Promise<void> => {
   const rows = await db
     .select({ clip: clipsTable })
     .from(clipsTable)
-    .innerJoin(reportsTable, eq(reportsTable.id, clipsTable.reportId))
-    .where(eq(reportsTable.userId, request.currentUser!.id))
     .orderBy(desc(clipsTable.id));
   response.json(ListClipsResponse.parse(rows.map((row) => clipResponse(row.clip))));
 });

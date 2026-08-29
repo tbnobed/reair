@@ -14,15 +14,33 @@ const scrypt = promisify(scryptCallback);
 const SESSION_COOKIE = "reair_session";
 const SESSION_DAYS = 30;
 
+export const USER_ROLES = ["admin", "editor", "viewer"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
 export type CurrentUser = {
   id: number;
   email: string;
+  role: UserRole;
   createdAt: Date;
 };
 
-export function isAdministrator(user: Pick<CurrentUser, "email">): boolean {
+export function normalizeUserRole(role: string): UserRole {
+  return USER_ROLES.includes(role as UserRole) ? role as UserRole : "viewer";
+}
+
+export function effectiveUserRole(user: Pick<CurrentUser, "email" | "role">): UserRole {
   const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  return Boolean(configuredEmail && user.email === configuredEmail);
+  return configuredEmail && user.email === configuredEmail
+    ? "admin"
+    : normalizeUserRole(user.role);
+}
+
+export function isAdministrator(user: Pick<CurrentUser, "email" | "role">): boolean {
+  return effectiveUserRole(user) === "admin";
+}
+
+export function canEditReports(user: Pick<CurrentUser, "email" | "role">): boolean {
+  return effectiveUserRole(user) !== "viewer";
 }
 
 function hashToken(token: string): string {
@@ -62,12 +80,18 @@ export async function seedAdminUser(): Promise<void> {
   }
 
   const existing = await db
-    .select({ id: usersTable.id })
+    .select({ id: usersTable.id, role: usersTable.role })
     .from(usersTable)
     .where(eq(usersTable.email, configuredEmail))
     .limit(1);
 
   if (existing[0]) {
+    if (existing[0].role !== "admin") {
+      await db
+        .update(usersTable)
+        .set({ role: "admin" })
+        .where(eq(usersTable.id, existing[0].id));
+    }
     logger.info({ email: configuredEmail }, "Configured admin account already exists");
     return;
   }
@@ -80,6 +104,7 @@ export async function seedAdminUser(): Promise<void> {
     .values({
       email: configuredEmail,
       passwordHash: await hashPassword(configuredPassword),
+      role: "admin",
     })
     .onConflictDoNothing({ target: usersTable.email });
 
@@ -116,6 +141,7 @@ export async function getCurrentUser(request: Request): Promise<CurrentUser | nu
     .select({
       id: usersTable.id,
       email: usersTable.email,
+      role: usersTable.role,
       createdAt: usersTable.createdAt,
       sessionId: sessionsTable.id,
     })
@@ -133,6 +159,10 @@ export async function getCurrentUser(request: Request): Promise<CurrentUser | nu
   return {
     id: rows[0].id,
     email: rows[0].email,
+    role: effectiveUserRole({
+      email: rows[0].email,
+      role: normalizeUserRole(rows[0].role),
+    }),
     createdAt: rows[0].createdAt,
   };
 }
@@ -166,6 +196,18 @@ export function requireAdministrator(
 ): void {
   if (!request.currentUser || !isAdministrator(request.currentUser)) {
     response.status(403).json({ error: "Administrator access required" });
+    return;
+  }
+  next();
+}
+
+export function requireReportEditor(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+): void {
+  if (!request.currentUser || !canEditReports(request.currentUser)) {
+    response.status(403).json({ error: "Editor or administrator access required" });
     return;
   }
   next();

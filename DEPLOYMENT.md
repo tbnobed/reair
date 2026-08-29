@@ -28,7 +28,17 @@ first successful start; keep `ADMIN_EMAIL` set so the app can identify the
 administrator. The account and its password remain in the database.
 
 Sign in with the administrator account and click **Users** in the viewer header
-to create or delete login accounts. Public self-registration is disabled.
+to create or delete login accounts and assign roles. Public self-registration
+is disabled.
+
+Roles are enforced by the API:
+
+- **Administrator** — manage users and reports
+- **Editor** — upload and delete reports
+- **Viewer** — read-only access to the shared report archive
+
+The API accepts request bodies up to 10 MB, including CSV uploads sent from the
+viewer. Nginx is configured with the same limit for the Docker deployment.
 Passwords are salted and hashed before they are stored; the browser receives
 only an HTTP-only session cookie.
 

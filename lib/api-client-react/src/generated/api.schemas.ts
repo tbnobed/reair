@@ -9,11 +9,21 @@ export interface HealthStatus {
   status: string;
 }
 
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+
+export const UserRole = {
+  admin: 'admin',
+  editor: 'editor',
+  viewer: 'viewer',
+} as const;
+
 export interface User {
   id: number;
   email: string;
   createdAt: string;
   isAdmin: boolean;
+  role: UserRole;
 }
 
 export interface AuthCredentials {
@@ -21,6 +31,14 @@ export interface AuthCredentials {
   email: string;
   /** @minLength 8 */
   password: string;
+}
+
+export type CreateUserRequest = AuthCredentials & {
+  role: UserRole;
+};
+
+export interface UpdateUserRoleRequest {
+  role: UserRole;
 }
 
 export interface AuthSession {
@@ -35,6 +53,7 @@ export type SessionStateUser = {
   email: string;
   createdAt: string;
   isAdmin: boolean;
+  role: UserRole;
 } | null;
 
 export interface SessionState {

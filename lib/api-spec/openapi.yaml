@@ -103,7 +103,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AuthCredentials"
+              $ref: "#/components/schemas/CreateUserRequest"
       responses:
         "201":
           description: Created user
@@ -118,6 +118,39 @@ paths:
         "401":
           description: Authentication required
   /auth/users/{userId}:
+    patch:
+      operationId: updateUserRole
+      tags: [auth]
+      summary: Update a user's role
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRoleRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid role or protected administrator
+        "403":
+          description: Administrator access required
+        "401":
+          description: Authentication required
+        "404":
+          description: User not found
     delete:
       operationId: deleteUser
       tags: [auth]
@@ -146,19 +179,25 @@ paths:
       operationId: listReports
       tags: [reports]
       summary: List uploaded reports
+      security:
+        - cookieAuth: []
       responses:
         "200":
-          description: Reports owned by the current user
+          description: Reports in the shared workspace archive
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Report"
+        "401":
+          description: Authentication required
     post:
       operationId: uploadReport
       tags: [reports]
       summary: Upload and parse a CSV report
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
@@ -174,11 +213,17 @@ paths:
                 $ref: "#/components/schemas/Report"
         "400":
           description: Report could not be parsed
+        "403":
+          description: Editor or administrator access required
+        "401":
+          description: Authentication required
   /reports/{reportId}:
     delete:
       operationId: deleteReport
       tags: [reports]
       summary: Delete an uploaded report
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: "#/components/parameters/ReportId"
       responses:
@@ -186,11 +231,17 @@ paths:
           description: Report deleted
         "404":
           description: Report not found
+        "403":
+          description: Editor or administrator access required
+        "401":
+          description: Authentication required
   /clips:
     get:
       operationId: listClips
       tags: [clips]
-      summary: List all clips from the current user's reports
+      summary: List all clips from the shared workspace archive
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Parsed clips
@@ -200,11 +251,15 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Clip"
+        "401":
+          description: Authentication required
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
       tags: [dashboard]
       summary: Get workspace counts and date range
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Workspace summary
@@ -212,6 +267,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Authentication required
 components:
   securitySchemes:
     cookieAuth:
@@ -244,7 +301,12 @@ components:
           type: string
         isAdmin:
           type: boolean
-      required: [id, email, createdAt, isAdmin]
+        role:
+          $ref: "#/components/schemas/UserRole"
+      required: [id, email, createdAt, isAdmin, role]
+    UserRole:
+      type: string
+      enum: [admin, editor, viewer]
     AuthCredentials:
       type: object
       properties:
@@ -255,6 +317,20 @@ components:
           type: string
           minLength: 8
       required: [email, password]
+    CreateUserRequest:
+      allOf:
+        - $ref: "#/components/schemas/AuthCredentials"
+        - type: object
+          properties:
+            role:
+              $ref: "#/components/schemas/UserRole"
+          required: [role]
+    UpdateUserRoleRequest:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/UserRole"
+      required: [role]
     AuthSession:
       type: object
       properties:
@@ -277,7 +353,9 @@ components:
               type: string
             isAdmin:
               type: boolean
-          required: [id, email, createdAt, isAdmin]
+            role:
+              $ref: "#/components/schemas/UserRole"
+          required: [id, email, createdAt, isAdmin, role]
       required: [authenticated, user]
     ReportUpload:
       type: object

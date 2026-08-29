@@ -5,15 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AuthCredentials } from './authCredentials';
 import type { UserRole } from './userRole';
 
-/**
- * @nullable
- */
-export type SessionStateUser = {
-  id: number;
-  email: string;
-  createdAt: string;
-  isAdmin: boolean;
+export type CreateUserRequest = AuthCredentials & {
   role: UserRole;
-} | null;
+};

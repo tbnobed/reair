@@ -34,10 +34,12 @@ import {
   useListUsers,
   useLogin,
   useLogout,
+  useUpdateUserRole,
   useUploadReport,
   type Clip,
   type Report,
   type User,
+  type UserRole,
 } from '@workspace/api-client-react';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -51,6 +53,16 @@ type FilterKey = 'all' | 'review' | 'dates' | 'clear';
 type SortKey = 'new' | 'old' | 'flags' | 'id';
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const roleLabels: Record<UserRole, string> = {
+  admin: 'Administrator',
+  editor: 'Editor',
+  viewer: 'Viewer',
+};
+const roleDescriptions: Record<UserRole, string> = {
+  admin: 'Manage users and reports',
+  editor: 'Upload and delete reports',
+  viewer: 'Read-only report access',
+};
 
 function dateValue(value: string | null | undefined) {
   if (!value) return null;
@@ -115,7 +127,14 @@ function App() {
 
 function SessionRouter() {
   const [location] = useLocation();
-  const { data: session, isLoading, isError } = useGetCurrentUser();
+  const { data: session, isLoading, isError } = useGetCurrentUser({
+    query: {
+      queryKey: getGetCurrentUserQueryKey(),
+      refetchInterval: 5_000,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
+    },
+  });
 
   if (isLoading) return <div className="auth-loading"><LoaderCircle className="spin" /> Checking your desk session</div>;
   if (isError || !session?.authenticated) return <AuthPage />;
@@ -196,6 +215,8 @@ function Workspace() {
   const { data: reports = [], isLoading: reportsLoading } = useListReports();
   const { data: clips = [], isLoading: clipsLoading, isError: clipsError, refetch: refetchClips } = useListClips();
   const logout = useLogout();
+  const currentRole = session?.user?.role ?? 'viewer';
+  const canEditReports = currentRole === 'admin' || currentRole === 'editor';
 
   const view = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -272,8 +293,9 @@ function Workspace() {
         <Stat value={totalFlags} label="flags" />
         <Stat value={formatDateSpan(clips)} label="clip dates" wide />
       </div>
-      {session?.user?.isAdmin && <button className="btn" data-testid="button-manage-users" onClick={() => setShowUsers(true)}><Users /> Users</button>}
-      <button className="btn" data-testid="button-upload-report" onClick={() => setShowReports(true)}><FilePlus2 /> Add report</button>
+      <span className={`header-role role-badge ${currentRole}`}>{roleLabels[currentRole]}</span>
+      {currentRole === 'admin' && <button className="btn" data-testid="button-manage-users" onClick={() => setShowUsers(true)}><Users /> Users</button>}
+      <button className="btn" data-testid="button-manage-reports" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}{canEditReports ? 'Add report' : 'Reports'}</button>
       <button className="btn ghost" data-testid="button-clear-view" onClick={clearView} disabled={!clips.length && !query}>Clear</button>
       <button className="btn ghost header-signout" data-testid="button-sign-out" onClick={signOut}><LogOut /> Sign out</button>
     </header>
@@ -289,8 +311,8 @@ function Workspace() {
       </section>
     </div>
 
-    {showReports && <ReportManager reports={reports} onClose={() => setShowReports(false)} />}
-    {showUsers && session?.user?.isAdmin && <UserManager currentUserId={session.user.id} onClose={() => setShowUsers(false)} />}
+    {showReports && <ReportManager reports={reports} canEdit={canEditReports} onClose={() => setShowReports(false)} />}
+    {showUsers && currentRole === 'admin' && session?.user && <UserManager currentUserId={session.user.id} onClose={() => setShowUsers(false)} />}
   </main>;
 }
 
@@ -438,7 +460,7 @@ function NoteSection({ title, notes, kind, query }: { title: string; notes: Clip
   </section>;
 }
 
-function ReportManager({ reports, onClose }: { reports: Report[]; onClose: () => void }) {
+function ReportManager({ reports, canEdit, onClose }: { reports: Report[]; canEdit: boolean; onClose: () => void }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const localQueryClient = useQueryClient();
   const remove = useDeleteReport();
@@ -483,15 +505,16 @@ function ReportManager({ reports, onClose }: { reports: Report[]; onClose: () =>
   return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="reports-dialog-title">
     <div className="reports-modal">
       <div className="modal-header"><div><p className="eyebrow">Archive / sources</p><h2 id="reports-dialog-title">Report archive</h2></div><button className="icon-button" aria-label="Close report archive" onClick={onClose}><X /></button></div>
-      {uploadOpen ? <div className="upload-panel">
+      {canEdit && uploadOpen ? <div className="upload-panel">
         <label>Report name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Morning news / 2024-06" /></label>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={chooseFile} hidden />
         <button className="file-picker" onClick={() => fileRef.current?.click()}><Upload />{file?.name || 'Choose a CSV file'}</button>
         {error && <div className="inline-error"><AlertCircle />{error}</div>}
         <div className="modal-actions"><button className="btn ghost" onClick={() => setUploadOpen(false)}>Cancel</button><button className="btn primary" onClick={submit} disabled={upload.isPending}>{upload.isPending ? <LoaderCircle className="spin" /> : <Check />} Upload and index</button></div>
       </div> : <>
-        <div className="modal-actions top-actions"><button className="btn primary" onClick={() => { setUploadOpen(true); setError(''); }}><Upload /> Add report</button></div>
-        {reports.length ? <div className="report-rows">{reports.map((report) => <div className="report-row" key={report.id}><div><strong>{report.name}</strong><span>{report.clipCount} clips · uploaded {formatDate(report.uploadedAt)}</span></div><button className="icon-button danger" aria-label={`Delete ${report.name}`} onClick={() => { if (window.confirm(`Delete ${report.name} and its clips?`)) remove.mutate({ reportId: report.id }, { onSuccess: () => { void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }); void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() }); } }); }}><Trash2 /></button></div>)}</div> : <div className="modal-empty">No report loaded yet. Add a CSV export to start.</div>}
+        {canEdit ? <div className="modal-actions top-actions"><button className="btn primary" onClick={() => { setUploadOpen(true); setError(''); }}><Upload /> Add report</button></div>
+          : <div className="permission-note">Viewer access is read-only. An Editor or Administrator can add and delete reports.</div>}
+        {reports.length ? <div className="report-rows">{reports.map((report) => <div className="report-row" key={report.id}><div><strong>{report.name}</strong><span>{report.clipCount} clips · uploaded {formatDate(report.uploadedAt)}</span></div>{canEdit && <button className="icon-button danger" aria-label={`Delete ${report.name}`} onClick={() => { if (window.confirm(`Delete ${report.name} and its clips?`)) remove.mutate({ reportId: report.id }, { onSuccess: () => { void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }); void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() }); } }); }}><Trash2 /></button>}</div>)}</div> : <div className="modal-empty">{canEdit ? 'No report loaded yet. Add a CSV export to start.' : 'No reports are available.'}</div>}
       </>}
     </div>
   </div>;
@@ -508,8 +531,10 @@ function UserManager({ currentUserId, onClose }: { currentUserId: number; onClos
   const { data: users = [], isLoading, isError, refetch } = useListUsers();
   const create = useCreateUser();
   const remove = useDeleteUser();
+  const updateRole = useUpdateUserRole();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('viewer');
   const [error, setError] = useState('');
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -520,13 +545,23 @@ function UserManager({ currentUserId, onClose }: { currentUserId: number; onClos
       setError('Enter a valid email and a password of at least 8 characters.');
       return;
     }
-    create.mutate({ data: { email: normalizedEmail, password } }, {
+    create.mutate({ data: { email: normalizedEmail, password, role } }, {
       onSuccess: () => {
         setEmail('');
         setPassword('');
+        setRole('viewer');
         void localQueryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
       },
       onError: (nextError) => setError(mutationErrorMessage(nextError, 'The user could not be created.')),
+    });
+  };
+
+  const changeRole = (user: User, nextRole: UserRole) => {
+    if (nextRole === user.role) return;
+    setError('');
+    updateRole.mutate({ userId: user.id, data: { role: nextRole } }, {
+      onSuccess: () => void localQueryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }),
+      onError: (nextError) => setError(mutationErrorMessage(nextError, 'The role could not be updated.')),
     });
   };
 
@@ -545,6 +580,7 @@ function UserManager({ currentUserId, onClose }: { currentUserId: number; onClos
       <form className="upload-panel user-create-form" onSubmit={submit} noValidate>
         <label>Email address<input data-testid="input-new-user-email" type="email" autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@station.org" /></label>
         <label>Temporary password<input data-testid="input-new-user-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" /></label>
+        <label>Role<select data-testid="select-new-user-role" value={role} onChange={(event) => setRole(event.target.value as UserRole)}><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Administrator</option></select><small>{roleDescriptions[role]}</small></label>
         {error && <div className="inline-error" data-testid="status-user-error"><AlertCircle />{error}</div>}
         <div className="modal-actions"><button data-testid="button-create-user" className="btn primary" type="submit" disabled={create.isPending}>{create.isPending ? <LoaderCircle className="spin" /> : <UserPlus />}{create.isPending ? 'Creating…' : 'Create user'}</button></div>
       </form>
@@ -552,8 +588,11 @@ function UserManager({ currentUserId, onClose }: { currentUserId: number; onClos
       {isLoading ? <div className="modal-empty"><LoaderCircle className="spin" /> Loading users…</div>
         : isError ? <div className="modal-empty"><p>Could not load users.</p><button className="btn" onClick={() => void refetch()}>Retry</button></div>
           : <div className="report-rows user-rows">{users.map((user) => <div className="report-row user-row" data-testid={`user-row-${user.id}`} key={user.id}>
-            <div><strong>{user.email}{user.isAdmin && <span className="admin-badge">Admin</span>}</strong><span>Created {formatDate(user.createdAt)}</span></div>
-            {user.id === currentUserId ? <span className="current-user-label">Current account</span> : <button className="icon-button danger" aria-label={`Delete ${user.email}`} disabled={remove.isPending} onClick={() => deleteAccount(user)}><Trash2 /></button>}
+            <div className="user-identity"><strong>{user.email}<span className={`role-badge ${user.role}`}>{roleLabels[user.role]}</span></strong><span>Created {formatDate(user.createdAt)} · {roleDescriptions[user.role]}</span></div>
+            <div className="user-row-actions">
+              <select data-testid={`select-user-role-${user.id}`} aria-label={`Role for ${user.email}`} value={user.role} disabled={user.id === currentUserId || updateRole.isPending} onChange={(event) => changeRole(user, event.target.value as UserRole)}><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Administrator</option></select>
+              {user.id === currentUserId ? <span className="current-user-label">Current account</span> : user.role !== 'admin' && <button className="icon-button danger" aria-label={`Delete ${user.email}`} disabled={remove.isPending} onClick={() => deleteAccount(user)}><Trash2 /></button>}
+            </div>
           </div>)}</div>}
     </div>
   </div>;
