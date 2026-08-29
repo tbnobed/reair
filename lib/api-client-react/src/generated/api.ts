@@ -27,7 +27,8 @@ import type {
   HealthStatus,
   Report,
   ReportUpload,
-  SessionState
+  SessionState,
+  User
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -353,6 +354,66 @@ export const useLogout = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getLogoutMutationOptions(options));
     }
+
+export const getListUsersUrl = () => `/api/auth/users`;
+
+export const listUsers = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<User[]> => {
+  return customFetch<User[]>(getListUsersUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListUsersQueryKey = () => [`/api/auth/users`] as const;
+
+export function useListUsers() {
+  const queryKey = getListUsersQueryKey();
+  const query = useQuery<User[], ErrorType<unknown>>({
+    queryKey,
+    queryFn: ({ signal }) => listUsers({ signal }),
+  });
+  return withQueryKey(query, queryKey);
+}
+
+export const createUser = async (
+  authCredentials: AuthCredentials,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<User> => {
+  return customFetch<User>(getListUsersUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(authCredentials),
+  });
+};
+
+export const useCreateUser = () => {
+  return useMutation<User, ErrorType<unknown>, { data: AuthCredentials }>({
+    mutationKey: ['createUser'],
+    mutationFn: ({ data }) => createUser(data),
+  });
+};
+
+export const getDeleteUserUrl = (userId: number) => `/api/auth/users/${userId}`;
+
+export const deleteUser = async (
+  userId: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<void> => {
+  return customFetch<void>(getDeleteUserUrl(userId), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const useDeleteUser = () => {
+  return useMutation<void, ErrorType<unknown>, { userId: number }>({
+    mutationKey: ['deleteUser'],
+    mutationFn: ({ userId }) => deleteUser(userId),
+  });
+};
 
 export const getListReportsUrl = () => {
 

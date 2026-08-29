@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { Router, type IRouter } from "express";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, clipsTable, reportsTable } from "@workspace/db";
+import { db, clipsTable, reportsTable, usersTable } from "@workspace/db";
 import {
   DeleteReportParams,
   ListClipsResponse,
@@ -93,12 +93,20 @@ router.post("/reports", async (request, response): Promise<void> => {
   }
 
   const userId = request.currentUser!.id;
-  await mkdir(storageRoot, { recursive: true });
   const storagePath = `${storageRoot}/${userId}-${randomUUID()}.csv`;
-  await writeFile(storagePath, parsed.data.content, "utf8");
 
   try {
     const report = await db.transaction(async (transaction) => {
+      const [activeUser] = await transaction
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .for("update");
+      if (!activeUser) {
+        throw new Error("The signed-in account is no longer available.");
+      }
+      await mkdir(storageRoot, { recursive: true });
+      await writeFile(storagePath, parsed.data.content, "utf8");
       const [created] = await transaction
         .insert(reportsTable)
         .values({

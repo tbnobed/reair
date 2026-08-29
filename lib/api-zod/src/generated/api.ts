@@ -25,7 +25,8 @@ export const GetCurrentUserResponse = zod.object({
   "user": zod.object({
   "id": zod.number(),
   "email": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "isAdmin": zod.boolean()
 }).nullable()
 })
 
@@ -48,9 +49,31 @@ export const LoginResponse = zod.object({
   "user": zod.object({
   "id": zod.number(),
   "email": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "isAdmin": zod.boolean()
 })
 })
+
+export const ListUsersResponseItem = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "createdAt": zod.string(),
+  "isAdmin": zod.boolean()
+})
+export const ListUsersResponse = zod.array(ListUsersResponseItem)
+
+export const CreateUserBody = zod.object({
+  "email": zod.string().min(3),
+  "password": zod.string().min(8)
+})
+
+export const CreateUserResponse = ListUsersResponseItem
+
+export const DeleteUserParams = zod.object({
+  "userId": zod.coerce.number()
+})
+
+export const DeleteUserResponse = zod.void()
 
 
 /**

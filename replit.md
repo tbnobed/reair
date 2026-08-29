@@ -40,6 +40,7 @@ Self-hosted report review desk for uploading, searching, and reviewing re-air CS
 ## Product
 
 - Seed the administrator account from `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then sign in with email/password.
+- The configured administrator manages additional login accounts from the Users panel in the authenticated viewer header.
 - Upload, index, search, filter, sort, inspect, print, and delete re-air report CSVs.
 - Review flagged moments, date-sensitive notes, people, air dates, and synopsis content.
 - Persist account, report, and parsed clip data across container restarts.

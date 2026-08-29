@@ -16,21 +16,28 @@ import {
   Search,
   Trash2,
   Upload,
+  UserPlus,
+  Users,
   X,
 } from 'lucide-react';
 import {
+  getListUsersQueryKey,
   getGetCurrentUserQueryKey,
   getListClipsQueryKey,
   getListReportsQueryKey,
+  useCreateUser,
   useDeleteReport,
+  useDeleteUser,
   useGetCurrentUser,
   useListClips,
   useListReports,
+  useListUsers,
   useLogin,
   useLogout,
   useUploadReport,
   type Clip,
   type Report,
+  type User,
 } from '@workspace/api-client-react';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -182,8 +189,10 @@ function Workspace() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [sort, setSort] = useState<SortKey>('new');
   const [showReports, setShowReports] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
   const detailRef = useRef<HTMLElement>(null);
   const localQueryClient = useQueryClient();
+  const { data: session } = useGetCurrentUser();
   const { data: reports = [], isLoading: reportsLoading } = useListReports();
   const { data: clips = [], isLoading: clipsLoading, isError: clipsError, refetch: refetchClips } = useListClips();
   const logout = useLogout();
@@ -263,9 +272,10 @@ function Workspace() {
         <Stat value={totalFlags} label="flags" />
         <Stat value={formatDateSpan(clips)} label="clip dates" wide />
       </div>
+      {session?.user?.isAdmin && <button className="btn" data-testid="button-manage-users" onClick={() => setShowUsers(true)}><Users /> Users</button>}
       <button className="btn" data-testid="button-upload-report" onClick={() => setShowReports(true)}><FilePlus2 /> Add report</button>
       <button className="btn ghost" data-testid="button-clear-view" onClick={clearView} disabled={!clips.length && !query}>Clear</button>
-      <button className="icon-button header-signout" data-testid="button-sign-out" aria-label="Sign out" onClick={signOut}><LogOut /></button>
+      <button className="btn ghost header-signout" data-testid="button-sign-out" onClick={signOut}><LogOut /> Sign out</button>
     </header>
 
     <ViewerToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} count={view.length} total={clips.length} onClear={clearView} />
@@ -280,6 +290,7 @@ function Workspace() {
     </div>
 
     {showReports && <ReportManager reports={reports} onClose={() => setShowReports(false)} />}
+    {showUsers && session?.user?.isAdmin && <UserManager currentUserId={session.user.id} onClose={() => setShowUsers(false)} />}
   </main>;
 }
 
@@ -482,6 +493,68 @@ function ReportManager({ reports, onClose }: { reports: Report[]; onClose: () =>
         <div className="modal-actions top-actions"><button className="btn primary" onClick={() => { setUploadOpen(true); setError(''); }}><Upload /> Add report</button></div>
         {reports.length ? <div className="report-rows">{reports.map((report) => <div className="report-row" key={report.id}><div><strong>{report.name}</strong><span>{report.clipCount} clips · uploaded {formatDate(report.uploadedAt)}</span></div><button className="icon-button danger" aria-label={`Delete ${report.name}`} onClick={() => { if (window.confirm(`Delete ${report.name} and its clips?`)) remove.mutate({ reportId: report.id }, { onSuccess: () => { void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }); void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() }); } }); }}><Trash2 /></button></div>)}</div> : <div className="modal-empty">No report loaded yet. Add a CSV export to start.</div>}
       </>}
+    </div>
+  </div>;
+}
+
+function mutationErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback;
+  const message = error.message.replace(/^HTTP \d+(?: [^:]*)?:\s*/, '').trim();
+  return message || fallback;
+}
+
+function UserManager({ currentUserId, onClose }: { currentUserId: number; onClose: () => void }) {
+  const localQueryClient = useQueryClient();
+  const { data: users = [], isLoading, isError, refetch } = useListUsers();
+  const create = useCreateUser();
+  const remove = useDeleteUser();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || password.length < 8) {
+      setError('Enter a valid email and a password of at least 8 characters.');
+      return;
+    }
+    create.mutate({ data: { email: normalizedEmail, password } }, {
+      onSuccess: () => {
+        setEmail('');
+        setPassword('');
+        void localQueryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+      },
+      onError: (nextError) => setError(mutationErrorMessage(nextError, 'The user could not be created.')),
+    });
+  };
+
+  const deleteAccount = (user: User) => {
+    if (!window.confirm(`Delete ${user.email}? Their reports and sessions will also be removed.`)) return;
+    setError('');
+    remove.mutate({ userId: user.id }, {
+      onSuccess: () => void localQueryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }),
+      onError: (nextError) => setError(mutationErrorMessage(nextError, 'The user could not be deleted.')),
+    });
+  };
+
+  return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="users-dialog-title">
+    <div className="reports-modal users-modal">
+      <div className="modal-header"><div><p className="eyebrow">Administration</p><h2 id="users-dialog-title">Users</h2></div><button className="icon-button" aria-label="Close user management" onClick={onClose}><X /></button></div>
+      <form className="upload-panel user-create-form" onSubmit={submit} noValidate>
+        <label>Email address<input data-testid="input-new-user-email" type="email" autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@station.org" /></label>
+        <label>Temporary password<input data-testid="input-new-user-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" /></label>
+        {error && <div className="inline-error" data-testid="status-user-error"><AlertCircle />{error}</div>}
+        <div className="modal-actions"><button data-testid="button-create-user" className="btn primary" type="submit" disabled={create.isPending}>{create.isPending ? <LoaderCircle className="spin" /> : <UserPlus />}{create.isPending ? 'Creating…' : 'Create user'}</button></div>
+      </form>
+      <div className="user-list-heading"><span>Existing accounts</span><b>{users.length}</b></div>
+      {isLoading ? <div className="modal-empty"><LoaderCircle className="spin" /> Loading users…</div>
+        : isError ? <div className="modal-empty"><p>Could not load users.</p><button className="btn" onClick={() => void refetch()}>Retry</button></div>
+          : <div className="report-rows user-rows">{users.map((user) => <div className="report-row user-row" data-testid={`user-row-${user.id}`} key={user.id}>
+            <div><strong>{user.email}{user.isAdmin && <span className="admin-badge">Admin</span>}</strong><span>Created {formatDate(user.createdAt)}</span></div>
+            {user.id === currentUserId ? <span className="current-user-label">Current account</span> : <button className="icon-button danger" aria-label={`Delete ${user.email}`} disabled={remove.isPending} onClick={() => deleteAccount(user)}><Trash2 /></button>}
+          </div>)}</div>}
     </div>
   </div>;
 }

@@ -20,6 +20,11 @@ export type CurrentUser = {
   createdAt: Date;
 };
 
+export function isAdministrator(user: Pick<CurrentUser, "email">): boolean {
+  const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  return Boolean(configuredEmail && user.email === configuredEmail);
+}
+
 function hashToken(token: string): string {
   const secret =
     process.env.SESSION_SECRET ?? "development-only-session-secret";
@@ -49,14 +54,11 @@ export async function seedAdminUser(): Promise<void> {
   const configuredPassword = process.env.ADMIN_PASSWORD;
 
   if (!configuredEmail && !configuredPassword) return;
-  if (!configuredEmail || !configuredPassword) {
-    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be set together.");
+  if (!configuredEmail) {
+    throw new Error("ADMIN_EMAIL is required when ADMIN_PASSWORD is set.");
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configuredEmail)) {
     throw new Error("ADMIN_EMAIL must be a valid email address.");
-  }
-  if (configuredPassword.length < 8) {
-    throw new Error("ADMIN_PASSWORD must be at least 8 characters long.");
   }
 
   const existing = await db
@@ -68,6 +70,9 @@ export async function seedAdminUser(): Promise<void> {
   if (existing[0]) {
     logger.info({ email: configuredEmail }, "Configured admin account already exists");
     return;
+  }
+  if (!configuredPassword || configuredPassword.length < 8) {
+    throw new Error("ADMIN_PASSWORD must be at least 8 characters long when seeding a new administrator.");
   }
 
   await db
@@ -151,6 +156,18 @@ export async function requireUser(
     return;
   }
   request.currentUser = user;
+  next();
+}
+
+export function requireAdministrator(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+): void {
+  if (!request.currentUser || !isAdministrator(request.currentUser)) {
+    response.status(403).json({ error: "Administrator access required" });
+    return;
+  }
   next();
 }
 

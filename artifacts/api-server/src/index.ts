@@ -1,5 +1,9 @@
 import app from "./app";
 import { seedAdminUser } from "./lib/auth";
+import {
+  processPendingFileDeletions,
+  startPendingFileDeletionWorker,
+} from "./lib/file-cleanup";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -17,6 +21,8 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 await seedAdminUser();
+await processPendingFileDeletions();
+startPendingFileDeletionWorker();
 
 app.listen(port, (err) => {
   if (err) {

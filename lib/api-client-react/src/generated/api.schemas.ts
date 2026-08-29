@@ -13,6 +13,7 @@ export interface User {
   id: number;
   email: string;
   createdAt: string;
+  isAdmin: boolean;
 }
 
 export interface AuthCredentials {
@@ -33,6 +34,7 @@ export type SessionStateUser = {
   id: number;
   email: string;
   createdAt: string;
+  isAdmin: boolean;
 } | null;
 
 export interface SessionState {

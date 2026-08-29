@@ -39,6 +39,25 @@ export const sessionsTable = pgTable(
   (table) => [uniqueIndex("reair_sessions_token_hash_idx").on(table.tokenHash)],
 );
 
+export const pendingFileDeletionsTable = pgTable(
+  "reair_pending_file_deletions",
+  {
+    id: serial("id").primaryKey(),
+    storagePath: text("storage_path").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("reair_pending_file_deletions_path_idx").on(table.storagePath),
+  ],
+);
+
 export const reportsTable = pgTable("reair_reports", {
   id: serial("id").primaryKey(),
   userId: integer("user_id")
