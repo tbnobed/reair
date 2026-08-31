@@ -1139,12 +1139,6 @@ mark {
     line-height: 1.25;
     overflow-wrap: anywhere;
   }
-  .mobile-detail-title > p:last-child {
-    margin: .65rem 0 0;
-    color: hsl(var(--muted-foreground));
-    font-size: .9rem;
-    line-height: 1.55;
-  }
   .mobile-context-summary {
     margin-top: 1.25rem;
     padding: 1rem;

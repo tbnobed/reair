@@ -609,7 +609,6 @@ function Workspace() {
                <div className="mobile-detail-title">
                  <p className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</p>
                  <h1>{selected.id}</h1>
-                 <p>{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
                </div>
                <div className={`verdict ${selected.sensitiveNotes.length ? 'review' : 'clear'}`}><i />{selected.sensitiveNotes.length ? `Needs review — ${selected.sensitiveNotes.length} item${selected.sensitiveNotes.length > 1 ? 's' : ''}` : 'No date-sensitive items flagged'}</div>
              </div>
