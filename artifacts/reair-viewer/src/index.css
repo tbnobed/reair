@@ -1104,11 +1104,20 @@ mark {
   .workspace-detail > :not(.mobile-detail-view) { display: none; }
   .mobile-detail-view { display: block; }
   .workspace-context { display: none; }
+  .mobile-detail-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+  }
   .mobile-back-to-clips {
     display: inline-flex;
     min-height: 2.75rem;
-    margin: -0.35rem 0 1rem -0.5rem;
+    margin: -0.35rem 0 0 -0.5rem;
     color: hsl(var(--muted-foreground));
+  }
+  .mobile-detail-nav > .btn {
+    min-height: 2.75rem;
   }
   .mobile-back-to-clips:hover { color: hsl(var(--foreground)); }
 }

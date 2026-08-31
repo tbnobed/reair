@@ -610,7 +610,10 @@ function Workspace() {
 
          <section className="workspace-detail min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
            <div className="mobile-detail-view">
-             <Button data-testid="button-mobile-back-to-clips" className="mobile-back-to-clips" variant="ghost" size="sm" onClick={() => setMobileDetailOpen(false)}><ChevronLeft /> All clips</Button>
+             <div className="mobile-detail-nav">
+               <Button data-testid="button-mobile-back-to-clips" className="mobile-back-to-clips" variant="ghost" size="sm" onClick={() => setMobileDetailOpen(false)}><ChevronLeft /> All clips</Button>
+               <Button data-testid="button-mobile-next-clip" variant="outline" size="sm" onClick={nextClip} disabled={selectedIndex >= view.length - 1}><span>Next clip</span><ChevronRight /></Button>
+             </div>
              <section className="mobile-review-summary">
                <div className="mobile-detail-heading">
                  <div className="mobile-detail-title">
