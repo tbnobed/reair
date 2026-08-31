@@ -148,7 +148,10 @@ async function persistReport(
   }
 }
 
-function clipResponse(clip: typeof clipsTable.$inferSelect) {
+function clipResponse(
+  clip: typeof clipsTable.$inferSelect,
+  disposition: string | null = null,
+) {
   return {
     id: clip.clipKey,
     reportId: clip.reportId,
@@ -166,6 +169,7 @@ function clipResponse(clip: typeof clipsTable.$inferSelect) {
     sensitiveNotes: notes(clip.sensitiveNotes),
     dateNotes: notes(clip.dateNotes),
     flagCount: clip.flagCount,
+    disposition: disposition as "Needs edit" | "Hold for context" | "Clear for re-air" | null,
   };
 }
 
@@ -203,6 +207,7 @@ async function clipReviewResponse(clipId: string) {
   return {
     clipId,
     episodeNotes: review?.episodeNotes ?? "",
+    disposition: (review?.disposition as "Needs edit" | "Hold for context" | "Clear for re-air" | null) ?? null,
     annotations: annotations.map((annotation) => ({
       kind: annotation.kind as "timed" | "date",
       noteKey: annotation.noteKey,
@@ -261,6 +266,7 @@ function mergeResponseClips(clips: ClipResponse[]): ClipResponse[] {
       sensitiveNotes,
       dateNotes,
       flagCount: sensitiveNotes.length + dateNotes.length,
+      disposition: existing.disposition ?? clip.disposition,
     });
   }
   return [...merged.values()];
@@ -368,10 +374,13 @@ router.delete("/reports/:reportId", requireReportEditor, async (request, respons
 
 router.get("/clips", async (_request, response): Promise<void> => {
   const rows = await db
-    .select({ clip: clipsTable })
+    .select({ clip: clipsTable, disposition: clipReviewsTable.disposition })
     .from(clipsTable)
+    .leftJoin(clipReviewsTable, eq(clipReviewsTable.clipKey, clipsTable.clipKey))
     .orderBy(desc(clipsTable.id));
-  response.json(ListClipsResponse.parse(mergeResponseClips(rows.map((row) => clipResponse(row.clip)))));
+  response.json(ListClipsResponse.parse(
+    mergeResponseClips(rows.map((row) => clipResponse(row.clip, row.disposition))),
+  ));
 });
 
 router.get("/clips/:clipId/review", async (request, response): Promise<void> => {
@@ -403,19 +412,21 @@ router.patch("/clips/:clipId/review", async (request, response): Promise<void> =
     return;
   }
 
-  const episodeNotes = parsed.data.episodeNotes;
-  if (episodeNotes.trim()) {
+  const { episodeNotes, disposition } = parsed.data;
+  if (episodeNotes.trim() || disposition) {
     await db
       .insert(clipReviewsTable)
       .values({
         clipKey: params.data.clipId,
         episodeNotes,
+        disposition,
         updatedBy: request.currentUser!.id,
       })
       .onConflictDoUpdate({
         target: clipReviewsTable.clipKey,
         set: {
           episodeNotes,
+          disposition,
           updatedBy: request.currentUser!.id,
           updatedAt: new Date(),
         },

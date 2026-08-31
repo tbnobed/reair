@@ -5,8 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EpisodeDisposition } from './episodeDisposition';
 
 export interface ClipReviewUpdate {
   /** @maxLength 10000 */
   episodeNotes: string;
+  disposition: EpisodeDisposition | null;
 }

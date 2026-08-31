@@ -94,6 +94,18 @@ export const ReviewNoteKind = {
 /**
  * @nullable
  */
+export type EpisodeDisposition = typeof EpisodeDisposition[keyof typeof EpisodeDisposition] | null;
+
+
+export const EpisodeDisposition = {
+  Needs_edit: 'Needs edit',
+  Hold_for_context: 'Hold for context',
+  'Clear_for_re-air': 'Clear for re-air',
+} as const;
+
+/**
+ * @nullable
+ */
 export type ReviewAnnotationStatus = typeof ReviewAnnotationStatus[keyof typeof ReviewAnnotationStatus] | null;
 
 
@@ -114,12 +126,14 @@ export interface ReviewAnnotation {
 export interface ClipReview {
   clipId: string;
   episodeNotes: string;
+  disposition: EpisodeDisposition | null;
   annotations: ReviewAnnotation[];
 }
 
 export interface ClipReviewUpdate {
   /** @maxLength 10000 */
   episodeNotes: string;
+  disposition: EpisodeDisposition | null;
 }
 
 export interface ClipReviewAnnotationUpdate {
@@ -156,6 +170,7 @@ export interface Clip {
   sensitiveNotes: Note[];
   dateNotes: Note[];
   flagCount: number;
+  disposition: EpisodeDisposition | null;
 }
 
 export interface DashboardSummary {

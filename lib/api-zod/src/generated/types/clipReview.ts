@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EpisodeDisposition } from './episodeDisposition';
 import type { ReviewAnnotation } from './reviewAnnotation';
 
 export interface ClipReview {
   clipId: string;
   episodeNotes: string;
+  disposition: EpisodeDisposition | null;
   annotations: ReviewAnnotation[];
 }

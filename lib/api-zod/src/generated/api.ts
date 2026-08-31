@@ -221,7 +221,8 @@ export const ListClipsResponseItem = zod.object({
   "secs": zod.number().nullable(),
   "text": zod.string()
 })),
-  "flagCount": zod.number()
+  "flagCount": zod.number(),
+  "disposition": zod.union([zod.literal('Needs edit'),zod.literal('Hold for context'),zod.literal('Clear for re-air'),zod.literal(null)]).nullable()
 })
 export const ListClipsResponse = zod.array(ListClipsResponseItem)
 
@@ -236,6 +237,7 @@ export const GetClipReviewParams = zod.object({
 export const GetClipReviewResponse = zod.object({
   "clipId": zod.string(),
   "episodeNotes": zod.string(),
+  "disposition": zod.union([zod.literal('Needs edit'),zod.literal('Hold for context'),zod.literal('Clear for re-air'),zod.literal(null)]).nullable(),
   "annotations": zod.array(zod.object({
   "kind": zod.enum(['timed', 'date']),
   "noteKey": zod.string(),
@@ -259,12 +261,14 @@ export const updateClipReviewBodyEpisodeNotesMax = 10000;
 
 
 export const UpdateClipReviewBody = zod.object({
-  "episodeNotes": zod.string().max(updateClipReviewBodyEpisodeNotesMax)
+  "episodeNotes": zod.string().max(updateClipReviewBodyEpisodeNotesMax),
+  "disposition": zod.union([zod.literal('Needs edit'),zod.literal('Hold for context'),zod.literal('Clear for re-air'),zod.literal(null)]).nullable()
 })
 
 export const UpdateClipReviewResponse = zod.object({
   "clipId": zod.string(),
   "episodeNotes": zod.string(),
+  "disposition": zod.union([zod.literal('Needs edit'),zod.literal('Hold for context'),zod.literal('Clear for re-air'),zod.literal(null)]).nullable(),
   "annotations": zod.array(zod.object({
   "kind": zod.enum(['timed', 'date']),
   "noteKey": zod.string(),
@@ -299,6 +303,7 @@ export const UpdateClipReviewAnnotationBody = zod.object({
 export const UpdateClipReviewAnnotationResponse = zod.object({
   "clipId": zod.string(),
   "episodeNotes": zod.string(),
+  "disposition": zod.union([zod.literal('Needs edit'),zod.literal('Hold for context'),zod.literal('Clear for re-air'),zod.literal(null)]).nullable(),
   "annotations": zod.array(zod.object({
   "kind": zod.enum(['timed', 'date']),
   "noteKey": zod.string(),

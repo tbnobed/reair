@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EpisodeDisposition } from './episodeDisposition';
 import type { Note } from './note';
 
 export interface Clip {
@@ -29,4 +30,5 @@ export interface Clip {
   sensitiveNotes: Note[];
   dateNotes: Note[];
   flagCount: number;
+  disposition: EpisodeDisposition | null;
 }

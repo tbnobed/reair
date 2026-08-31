@@ -101,6 +101,7 @@ export const clipReviewsTable = pgTable(
     id: serial("id").primaryKey(),
     clipKey: text("clip_key").notNull(),
     episodeNotes: text("episode_notes").notNull().default(""),
+    disposition: text("disposition"),
     updatedBy: integer("updated_by")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),

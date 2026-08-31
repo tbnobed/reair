@@ -14,6 +14,7 @@ export * from './clipReviewAnnotationUpdate';
 export * from './clipReviewUpdate';
 export * from './createUserRequest';
 export * from './dashboardSummary';
+export * from './episodeDisposition';
 export * from './healthStatus';
 export * from './note';
 export * from './report';

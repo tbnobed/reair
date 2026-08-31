@@ -505,6 +505,9 @@ components:
     ReviewNoteKind:
       type: string
       enum: [timed, date]
+    EpisodeDisposition:
+      type: ["string", "null"]
+      enum: [Needs edit, Hold for context, Clear for re-air, null]
     ReviewAnnotationStatus:
       type: ["string", "null"]
       enum: [good-to-re-air, needs-edit, null]
@@ -531,18 +534,22 @@ components:
           type: string
         episodeNotes:
           type: string
+        disposition:
+          $ref: "#/components/schemas/EpisodeDisposition"
         annotations:
           type: array
           items:
             $ref: "#/components/schemas/ReviewAnnotation"
-      required: [clipId, episodeNotes, annotations]
+      required: [clipId, episodeNotes, disposition, annotations]
     ClipReviewUpdate:
       type: object
       properties:
         episodeNotes:
           type: string
           maxLength: 10000
-      required: [episodeNotes]
+        disposition:
+          $ref: "#/components/schemas/EpisodeDisposition"
+      required: [episodeNotes, disposition]
     ClipReviewAnnotationUpdate:
       type: object
       properties:
@@ -599,6 +606,8 @@ components:
             $ref: "#/components/schemas/Note"
         flagCount:
           type: number
+        disposition:
+          $ref: "#/components/schemas/EpisodeDisposition"
       required:
         - id
         - reportId
@@ -616,6 +625,7 @@ components:
         - sensitiveNotes
         - dateNotes
         - flagCount
+        - disposition
     DashboardSummary:
       type: object
       properties:

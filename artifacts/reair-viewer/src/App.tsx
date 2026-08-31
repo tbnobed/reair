@@ -48,6 +48,7 @@ import {
   useUploadReport,
   type Clip,
   type ClipReview,
+  type EpisodeDisposition,
   type Report,
   type ReviewAnnotation,
   type ReviewNoteKind,
@@ -79,7 +80,9 @@ const queryClient = new QueryClient();
 type FilterKey = 'all' | 'review' | 'dates' | 'clear';
 type SortKey = 'new' | 'old' | 'flags' | 'id';
 type ArchiveView = 'list' | 'calendar';
-type DispositionFilter = 'all' | 'Needs edit' | 'Hold for context' | 'Clear for re-air';
+type Disposition = Exclude<EpisodeDisposition, null>;
+type DispositionFilter = 'all' | Disposition;
+const dispositionOptions: Disposition[] = ['Needs edit', 'Hold for context', 'Clear for re-air'];
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const roleLabels: Record<UserRole, string> = {
@@ -266,7 +269,7 @@ function AuthPage() {
 function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [decisions, setDecisions] = useState<Record<string, string>>({});
+  const [decisions, setDecisions] = useState<Record<string, Disposition | undefined>>({});
   const [episodeDraft, setEpisodeDraft] = useState('');
   const [episodeDirty, setEpisodeDirty] = useState(false);
   const [reviewSaveError, setReviewSaveError] = useState('');
@@ -326,6 +329,22 @@ function Workspace() {
     if (!episodeDirty) setEpisodeDraft(clipReview?.episodeNotes ?? '');
   }, [clipReview?.episodeNotes, episodeDirty]);
 
+  useEffect(() => {
+    const nextDecisions = Object.fromEntries(
+      clips
+        .filter((clip) => clip.disposition)
+        .map((clip) => [clip.id, clip.disposition]),
+    ) as Record<string, Disposition>;
+    setDecisions((current) => {
+      const currentKeys = Object.keys(current);
+      const nextKeys = Object.keys(nextDecisions);
+      if (currentKeys.length === nextKeys.length && nextKeys.every((key) => current[key] === nextDecisions[key])) {
+        return current;
+      }
+      return nextDecisions;
+    });
+  }, [clips]);
+
   const selected = view.find((clip) => clip.id === selectedId) ?? view[0] ?? null;
   const selectedIndex = Math.max(0, view.findIndex((clip) => clip.id === selected?.id));
   const reviewed = clips.filter((clip) => decisions[clip.id]).length;
@@ -357,13 +376,55 @@ function Workspace() {
     if (!selectedId) return;
     const clipId = selectedId;
     setReviewSaveError('');
-    saveEpisodeReview.mutate({ clipId, data: { episodeNotes: episodeDraft } }, {
+    saveEpisodeReview.mutate({ clipId, data: { episodeNotes: episodeDraft, disposition: decisions[clipId] ?? clipReview?.disposition ?? null } }, {
       onSuccess: (review) => {
         updateReviewCache(clipId, review);
+        localQueryClient.setQueryData<Clip[]>(getListClipsQueryKey(), (current) => current?.map((clip) => (
+          clip.id === clipId ? { ...clip, disposition: review.disposition } : clip
+        )));
         setEpisodeDraft(review.episodeNotes);
         setEpisodeDirty(false);
+        setDecisions((current) => {
+          const next = { ...current };
+          if (review.disposition) next[clipId] = review.disposition;
+          else delete next[clipId];
+          return next;
+        });
       },
       onError: () => setReviewSaveError('Episode notes could not be saved. Try again.'),
+    });
+  };
+
+  const saveDisposition = (disposition: Disposition) => {
+    if (!selectedId || reviewLoading) return;
+    const clipId = selectedId;
+    const previousDisposition = decisions[clipId];
+    setReviewSaveError('');
+    setDecisions((current) => ({ ...current, [clipId]: disposition }));
+    saveEpisodeReview.mutate({ clipId, data: { episodeNotes: episodeDraft, disposition } }, {
+      onSuccess: (review) => {
+        updateReviewCache(clipId, review);
+        localQueryClient.setQueryData<Clip[]>(getListClipsQueryKey(), (current) => current?.map((clip) => (
+          clip.id === clipId ? { ...clip, disposition: review.disposition } : clip
+        )));
+        setEpisodeDraft(review.episodeNotes);
+        setEpisodeDirty(false);
+        setDecisions((current) => {
+          const next = { ...current };
+          if (review.disposition) next[clipId] = review.disposition;
+          else delete next[clipId];
+          return next;
+        });
+      },
+      onError: () => {
+        setReviewSaveError('Editorial disposition could not be saved. Try again.');
+        setDecisions((current) => {
+          const next = { ...current };
+          if (previousDisposition) next[clipId] = previousDisposition;
+          else delete next[clipId];
+          return next;
+        });
+      },
     });
   };
 
@@ -511,8 +572,8 @@ function Workspace() {
 
            <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
             <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
-            <div className="mt-4 flex flex-wrap gap-2">{['Needs edit', 'Hold for context', 'Clear for re-air'].map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => setDecisions((current) => ({ ...current, [selected.id]: option }))}>{option}</Button>)}</div>
-            {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Recorded locally as “{decisions[selected.id]}”. No archive data was changed.</p>}
+             <div className="mt-4 flex flex-wrap gap-2">{dispositionOptions.map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => saveDisposition(option)} disabled={reviewLoading || saveEpisodeReview.isPending}>{option}</Button>)}</div>
+             {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Saved for every reviewer as “{decisions[selected.id]}”.</p>}
           </section>
         </section>
 
