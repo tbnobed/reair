@@ -269,6 +269,8 @@ function Workspace() {
   };
 
   const notes = selected ? [...selected.sensitiveNotes, ...selected.dateNotes] : [];
+  const timedNotes = selected?.sensitiveNotes ?? [];
+  const dateNotes = selected?.dateNotes ?? [];
   const people = selected ? [...selected.hosts, ...selected.guests] : [];
 
   return <main className="min-h-screen bg-background font-sans text-foreground">
@@ -329,13 +331,19 @@ function Workspace() {
         <aside className="max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
           <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
           <dl className="mt-3 divide-y divide-border border-y border-border">
-            {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded'], ['Date notes', selected.dateNotes.length ? selected.dateNotes.map((note) => `${note.tc ? `${note.tc} · ` : ''}${note.text}`).join(' · ') : 'None recorded'], ['Source', selected.source]].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
+            {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded'], ['Source', selected.source]].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
           </dl>
 
-          <section className="mt-6 border-t border-border pt-5">
-            <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Timed material</h2>
-            {notes.length ? <div className="mt-3 grid gap-2">{notes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
-          </section>
+          <div className="mt-6 grid gap-5 border-t border-border pt-5 xl:grid-cols-2">
+            <section>
+              <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Timed material</h2>
+              {timedNotes.length ? <div className="mt-3 grid gap-2">{timedNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
+            </section>
+            <section>
+              <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Date notes</h2>
+              {dateNotes.length ? <div className="mt-3 grid gap-2">{dateNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No date notes were recorded for this clip.</p>}
+            </section>
+          </div>
 
           <div className="mt-6 border-t border-border pt-5">
             <p className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em]">Material timeline</p>
