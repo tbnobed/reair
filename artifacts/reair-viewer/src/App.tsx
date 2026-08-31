@@ -252,7 +252,6 @@ function Workspace() {
 
   const selected = clips.find((clip) => clip.id === selectedId) ?? null;
   const selectedIndex = Math.max(0, clips.findIndex((clip) => clip.id === selectedId));
-  const reviewed = clips.filter((clip) => decisions[clip.id]).length;
   const sourceLabel = reports.length > 1
     ? `${reports.length} reports · ${reports[reports.length - 1]?.name || 'archive'}`
     : reports[0]?.name || 'No report loaded';
@@ -294,17 +293,11 @@ function Workspace() {
         {!clipsLoading && !clipsError && canEditReports && <Button className="mt-5" onClick={() => setShowReports(true)}>Add report</Button>}
       </div>
     </section> : <>
-      <section className="grid items-center gap-4 border-b bg-card px-4 py-4 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]">
-        <div><p className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">Guided review · Live archive</p><p className="mt-1 font-serif text-lg font-bold">Resolve each decision before moving on</p></div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${reviewed} of ${clips.length} clips reviewed`} aria-valuemin={0} aria-valuemax={clips.length} aria-valuenow={reviewed}><div className="h-full bg-primary transition-[width]" style={{ width: `${clips.length ? reviewed / clips.length * 100 : 0}%` }} /></div>
-        <div className="font-mono text-xs">{reviewed} / {clips.length} resolved</div>
-      </section>
-
-      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_47.5rem]">
+      <div className="grid min-h-[calc(100vh-4rem)] grid-cols-1 lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_47.5rem]">
         <aside className="bg-sidebar p-4 text-sidebar-foreground">
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
           <div className="mt-3 flex gap-2"><Input aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
-          <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
+          <div className="mt-3 h-[calc(100vh-9rem)] overflow-y-auto">
             <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); }}>
               <span className="min-w-0"><span className="block font-mono text-xs">{clip.id}</span><span className="mt-1 block truncate text-xs opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1.5 block font-mono text-[0.65rem] opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
             </Button>)}</div>
@@ -328,7 +321,7 @@ function Workspace() {
           </section>
         </section>
 
-        <aside className="max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
+        <aside className="max-h-[calc(100vh-4rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
           <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
           <dl className="mt-3 divide-y divide-border border-y border-border">
             {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded'], ['Source', selected.source]].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
