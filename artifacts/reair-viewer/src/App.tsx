@@ -107,6 +107,15 @@ function formatDate(value: string | null | undefined) {
   return parsed ? `${monthNames[parsed.getMonth()]} ${parsed.getDate()}, ${parsed.getFullYear()}` : value || 'Not listed';
 }
 
+function formatTimelineTime(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 function formatDateSpan(clips: Clip[]) {
   const dates = clips.map((clip) => dateValue(clip.date)).filter((value): value is Date => Boolean(value)).sort((a, b) => a.getTime() - b.getTime());
   if (!dates.length) return '—';
@@ -362,6 +371,17 @@ function Workspace() {
   const notes = selected ? [...selected.sensitiveNotes, ...selected.dateNotes] : [];
   const timedNotes = selected?.sensitiveNotes ?? [];
   const dateNotes = selected?.dateNotes ?? [];
+  const timelineNotes = [
+    ...timedNotes.map((note, index) => ({ ...note, kind: 'timed' as const, index })),
+    ...dateNotes.map((note, index) => ({ ...note, kind: 'date' as const, index })),
+  ]
+    .filter((note) => note.secs !== null)
+    .sort((left, right) => (left.secs ?? 0) - (right.secs ?? 0));
+  const timelineMaxSeconds = Math.max(0, ...timelineNotes.map((note) => note.secs ?? 0));
+  const timelineSpan = timelineNotes.length
+    ? Math.max(60, Math.ceil((timelineMaxSeconds + 60) / 60) * 60)
+    : 0;
+  const timelinePosition = (seconds: number) => `${Math.min(98, Math.max(2, (seconds / timelineSpan) * 100))}%`;
   const people = selected ? [...selected.hosts, ...selected.guests] : [];
   const annotationById = useMemo(
     () => new Map((clipReview?.annotations ?? []).map((annotation) => [`${annotation.kind}|${annotation.noteKey}`, annotation])),
@@ -541,8 +561,28 @@ function Workspace() {
 
            <div className="mt-7 border-t border-border pt-5">
              <p className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em]">Material timeline</p>
-             <div className="relative mt-5 h-12 border-b-2 border-accent">{notes.slice(0, 8).map((_, index) => <i key={index} className="absolute bottom-[-0.375rem] h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-background" style={{ left: `${((index + 1) / (Math.min(notes.length, 8) + 1)) * 100}%` }} />)}</div>
-             <div className="mt-2 flex justify-between font-mono text-[0.65rem] text-muted-foreground"><span>00:00</span><span>End</span></div>
+              <div className="relative mt-5 h-12 border-b-2 border-accent">
+                {timelineNotes.map((note, index) => {
+                  const targetKind = note.kind === 'timed' ? 'amber' : 'cyan';
+                  const targetId = noteDomId(targetKind, note.index);
+                  return <button
+                    key={`${note.kind}-${note.tc}-${note.text}-${index}`}
+                    type="button"
+                    className="absolute bottom-[-0.375rem] z-10 -translate-x-1/2 rounded-full p-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    style={{ left: timelinePosition(note.secs ?? 0) }}
+                    onClick={() => document.getElementById(targetId)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                    title={`${note.tc} — ${note.text}`}
+                    aria-label={`${note.tc}: ${note.text}`}
+                  >
+                    <i className={`block h-2.5 w-2.5 rounded-full ring-4 ring-background ${note.kind === 'timed' ? 'bg-primary' : 'bg-accent'}`} />
+                  </button>;
+                })}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[0.65rem] text-muted-foreground">
+                <span>00:00</span>
+                <span>{timelineNotes.length ? `${timelineNotes.length} timecoded item${timelineNotes.length === 1 ? '' : 's'} · through ${formatTimelineTime(timelineSpan)}` : notes.length ? 'No timecodes recorded' : 'No material flagged'}</span>
+                <span>End</span>
+              </div>
            </div>
 
            <section className="mt-7 border-t border-border pt-5">
