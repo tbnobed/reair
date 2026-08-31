@@ -68,9 +68,9 @@ const roleLabels: Record<UserRole, string> = {
   viewer: 'Viewer',
 };
 const roleDescriptions: Record<UserRole, string> = {
-  admin: 'Manage users and reports',
-  editor: 'Upload and delete reports',
-  viewer: 'Read-only report access',
+  admin: 'Manage users and imported data',
+  editor: 'Upload and delete imported data',
+  viewer: 'Read-only archive access',
 };
 
 function dateValue(value: string | null | undefined) {
@@ -109,7 +109,6 @@ function dateKey(value: Date) {
 function textForClip(clip: Clip) {
   return [
     clip.id,
-    clip.source,
     clip.shortSynopsis,
     clip.longSynopsis,
     ...clip.hosts,
@@ -133,7 +132,7 @@ function noteDomId(kind: 'amber' | 'cyan', index: number) {
 
 function Logo() {
   return <div className="viewer-brand" data-testid="brand-reair">
-    <span className="viewer-brand-mark">Re<span>·</span>Air Report</span>
+    <span className="viewer-brand-mark">Re·Air / Praise</span>
   </div>;
 }
 
@@ -179,7 +178,7 @@ function RoutedErrorBoundary({ children }: { children: React.ReactNode }) {
 function RedirectToWorkspace() {
   const [, setLocation] = useLocation();
   useEffect(() => setLocation('/'), [setLocation]);
-  return <div className="auth-loading"><LoaderCircle className="spin" /> Opening your report desk</div>;
+  return <div className="auth-loading"><LoaderCircle className="spin" /> Opening your archive</div>;
 }
 
 function AuthPage() {
@@ -212,7 +211,7 @@ function AuthPage() {
       <div className="auth-copy">
         <p className="eyebrow">Private review workstation</p>
         <h1>Sign in to Re-Air.</h1>
-        <p>Access the report archive on your own infrastructure.</p>
+        <p>Access the Re-Air archive on your own infrastructure.</p>
       </div>
       <form onSubmit={submit} className="auth-form" noValidate>
         <label>Email address<input data-testid="input-auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@station.org" /></label>
@@ -220,7 +219,7 @@ function AuthPage() {
         {error && <div className="inline-error" data-testid="status-auth-error"><AlertCircle />{error}</div>}
         <button data-testid="button-auth-submit" className="btn primary wide" type="submit" disabled={login.isPending}>
           {login.isPending ? <LoaderCircle className="spin" /> : <LogOut className="enter-icon" />}
-          {login.isPending ? 'Checking credentials…' : 'Enter report desk'}
+          {login.isPending ? 'Checking credentials…' : 'Enter archive'}
         </button>
       </form>
     </div>
@@ -253,10 +252,6 @@ function Workspace() {
   const selected = clips.find((clip) => clip.id === selectedId) ?? null;
   const selectedIndex = Math.max(0, clips.findIndex((clip) => clip.id === selectedId));
   const reviewed = clips.filter((clip) => decisions[clip.id]).length;
-  const sourceLabel = reports.length > 1
-    ? `${reports.length} reports · ${reports[reports.length - 1]?.name || 'archive'}`
-    : reports[0]?.name || 'No report loaded';
-
   const signOut = () => logout.mutate(undefined, {
     onSuccess: () => localQueryClient.setQueryData(getGetCurrentUserQueryKey(), { authenticated: false, user: null }),
   });
@@ -275,11 +270,10 @@ function Workspace() {
 
   return <main className="min-h-screen bg-background font-sans text-foreground">
     <header className="flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
-      <div className="whitespace-nowrap font-serif text-sm font-bold uppercase tracking-[0.16em]">Re<span className="text-primary">·</span>Air / Review Desk</div>
-      <div className="hidden border-l border-sidebar-border pl-4 font-mono text-xs text-sidebar-foreground/70 sm:block" title={sourceLabel}>{sourceLabel}</div>
+      <div className="whitespace-nowrap font-serif text-sm font-bold uppercase tracking-[0.16em]">Re·Air / Praise</div>
       <div className="ml-auto flex items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => window.print()}><Printer /> Print sheet</Button>
-        <Button variant="secondary" size="sm" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="hidden sm:inline">{canEditReports ? 'Add report' : 'Reports'}</span></Button>
+        <Button variant="secondary" size="sm" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="hidden sm:inline">{canEditReports ? 'Add data' : 'Data'}</span></Button>
         {currentRole === 'admin' && <Button variant="secondary" size="sm" onClick={() => setShowUsers(true)}><Users /><span className="hidden sm:inline">Users</span></Button>}
         <Button variant="secondary" size="icon" aria-label={`Sign out ${roleLabels[currentRole]}`} onClick={signOut}><UserRound /></Button>
       </div>
@@ -289,9 +283,9 @@ function Workspace() {
       <div className="max-w-lg">
         <p className="font-serif text-xs font-bold uppercase tracking-[0.18em] text-primary">Archive connection</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">{clipsLoading ? 'Loading live archive' : clipsError ? 'Archive unavailable' : 'Your archive is empty'}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{clipsLoading ? 'Loading your Re-Air archive…' : clipsError ? 'Your Re-Air archive could not be loaded.' : 'Add a report to begin guided review.'}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{clipsLoading ? 'Loading your Re-Air archive…' : clipsError ? 'Your Re-Air archive could not be loaded.' : 'Add a CSV to begin guided review.'}</p>
         {clipsError && <Button className="mt-5" onClick={() => void refetchClips()}>Retry archive</Button>}
-        {!clipsLoading && !clipsError && canEditReports && <Button className="mt-5" onClick={() => setShowReports(true)}>Add report</Button>}
+        {!clipsLoading && !clipsError && canEditReports && <Button className="mt-5" onClick={() => setShowReports(true)}>Add data</Button>}
       </div>
     </section> : <>
       <section className="grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress">
@@ -334,7 +328,7 @@ function Workspace() {
         <aside className="max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
           <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
           <dl className="mt-3 divide-y divide-border border-y border-border">
-            {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded'], ['Source', selected.source]].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
+            {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded']].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
           </dl>
 
           <div className="mt-6 grid gap-5 border-t border-border pt-5 xl:grid-cols-2">
@@ -417,7 +411,7 @@ function ViewerToolbar({ query, setQuery, filter, setFilter, sort, setSort, arch
 }
 
 function ClipList({ clips, query, selectedId, onSelect, hasClips, collapsedMonths, setCollapsedMonths }: { clips: Clip[]; query: string; selectedId: string | null; onSelect: (id: string) => void; hasClips: boolean; collapsedMonths: Record<string, boolean>; setCollapsedMonths: React.Dispatch<React.SetStateAction<Record<string, boolean>>> }) {
-  if (!clips.length) return <p className="empty-list">{hasClips ? <>No clips match.<br />Clear the search or choose a different filter.</> : <>No report loaded.<br />Add a report to start.</>}</p>;
+  if (!clips.length) return <p className="empty-list">{hasClips ? <>No clips match.<br />Clear the search or choose a different filter.</> : <>No archive data loaded.<br />Add a CSV to start.</>}</p>;
   let lastGroup = '';
   return <div>{clips.map((clip) => {
     const parsed = dateValue(clip.date);
@@ -506,8 +500,8 @@ function CalendarView({ clips, month, setMonth, selectedId, onSelect }: { clips:
 
 function Placeholder({ hasClips }: { hasClips: boolean }) {
   return <div className="placeholder">
-    <div className="placeholder-big">{hasClips ? 'Select a clip' : 'Load a re-air report'}</div>
-    <p>{hasClips ? 'Pick a clip on the left to see its flags, people, and synopsis.' : 'Use Add report to load a CSV into the searchable archive.'}</p>
+    <div className="placeholder-big">{hasClips ? 'Select a clip' : 'Load archive data'}</div>
+    <p>{hasClips ? 'Pick a clip on the left to see its flags, people, and synopsis.' : 'Use Add data to load a CSV into the searchable archive.'}</p>
     <div className="key-help"><kbd>↑</kbd> <kbd>↓</kbd> move&nbsp;&nbsp; <kbd>/</kbd> search&nbsp;&nbsp; <kbd>Esc</kbd> clear</div>
   </div>;
 }
@@ -533,14 +527,13 @@ function ClipDetail({ clip, query, onSearch }: { clip: Clip; query: string; onSe
       {metadata.map((item) => <div key={item.label}><dt>{item.label}</dt><dd className={!item.value ? 'none' : ''}>{item.value || 'Not listed'}</dd></div>)}
       <div><dt>Host</dt><dd>{clip.hosts.length ? clip.hosts.map((person) => <button className="chip-link" key={person} onClick={() => onSearch(person)}>{highlight(person, query)}</button>) : <span className="none">Not listed</span>}</dd></div>
       <div><dt>Guests</dt><dd>{clip.guests.length ? clip.guests.map((person) => <button className="chip-link" key={person} onClick={() => onSearch(person)}>{highlight(person, query)}</button>) : <span className="none">Not listed</span>}</dd></div>
-      {clip.source && <div><dt>Source report</dt><dd className="source-meta">{clip.source}</dd></div>}
     </dl>
 
     <section className="detail-section">
       <h2>Synopsis</h2>
       <div className="synopsis">
-        <div><h3>Short</h3><p>{clip.shortSynopsis ? highlight(clip.shortSynopsis, query) : <span className="none">Not provided in this report.</span>}</p></div>
-        <div className="synopsis-full"><h3>Full</h3><p>{clip.longSynopsis ? highlight(clip.longSynopsis, query) : <span className="none">{clip.duplicateLongSynopsis ? 'This report repeats the short synopsis here.' : 'Not provided in this report.'}</span>}</p></div>
+        <div><h3>Short</h3><p>{clip.shortSynopsis ? highlight(clip.shortSynopsis, query) : <span className="none">Not provided.</span>}</p></div>
+        <div className="synopsis-full"><h3>Full</h3><p>{clip.longSynopsis ? highlight(clip.longSynopsis, query) : <span className="none">{clip.duplicateLongSynopsis ? 'The full synopsis repeats the short synopsis.' : 'Not provided.'}</span>}</p></div>
       </div>
     </section>
 
@@ -580,7 +573,6 @@ function ReportManager({ reports, canEdit, onClose }: { reports: Report[]; canEd
   const localQueryClient = useQueryClient();
   const remove = useDeleteReport();
   const upload = useUploadReport();
-  const [name, setName] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -594,22 +586,20 @@ function ReportManager({ reports, canEdit, onClose }: { reports: Report[]; canEd
     }
     setError('');
     setFile(next);
-    if (next && !name) setName(next.name.replace(/\.csv$/i, ''));
   };
 
   const submit = () => {
-    if (!file || !name.trim()) {
-      setError('Choose a CSV file and give this report a name.');
+    if (!file) {
+      setError('Choose a CSV file.');
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => upload.mutate({ data: { name: name.trim(), content: String(reader.result ?? '') } }, {
+    reader.onload = () => upload.mutate({ data: { name: file.name.replace(/\.csv$/i, ''), content: String(reader.result ?? '') } }, {
       onSuccess: () => {
         void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() });
         void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() });
         setUploadOpen(false);
         setFile(null);
-        setName('');
       },
       onError: () => setError('Upload failed. Check the CSV and try again.'),
     });
@@ -619,17 +609,16 @@ function ReportManager({ reports, canEdit, onClose }: { reports: Report[]; canEd
 
   return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="reports-dialog-title">
     <div className="reports-modal">
-      <div className="modal-header"><div><p className="eyebrow">Archive / sources</p><h2 id="reports-dialog-title">Report archive</h2></div><button className="icon-button" aria-label="Close report archive" onClick={onClose}><X /></button></div>
+      <div className="modal-header"><div><p className="eyebrow">Archive / data</p><h2 id="reports-dialog-title">Data imports</h2></div><button className="icon-button" aria-label="Close data imports" onClick={onClose}><X /></button></div>
       {canEdit && uploadOpen ? <div className="upload-panel">
-        <label>Report name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Morning news / 2024-06" /></label>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={chooseFile} hidden />
         <button className="file-picker" onClick={() => fileRef.current?.click()}><Upload />{file?.name || 'Choose a CSV file'}</button>
         {error && <div className="inline-error"><AlertCircle />{error}</div>}
-        <div className="modal-actions"><button className="btn ghost" onClick={() => setUploadOpen(false)}>Cancel</button><button className="btn primary" onClick={submit} disabled={upload.isPending}>{upload.isPending ? <LoaderCircle className="spin" /> : <Check />} Upload and index</button></div>
+        <div className="modal-actions"><button className="btn ghost" onClick={() => setUploadOpen(false)}>Cancel</button><button className="btn primary" onClick={submit} disabled={upload.isPending}>{upload.isPending ? <LoaderCircle className="spin" /> : <Check />} Add to archive</button></div>
       </div> : <>
-        {canEdit ? <div className="modal-actions top-actions"><button className="btn primary" onClick={() => { setUploadOpen(true); setError(''); }}><Upload /> Add report</button></div>
-          : <div className="permission-note">Viewer access is read-only. An Editor or Administrator can add and delete reports.</div>}
-        {reports.length ? <div className="report-rows">{reports.map((report) => <div className="report-row" key={report.id}><div><strong>{report.name}</strong><span>{report.clipCount} clips · uploaded {formatDate(report.uploadedAt)}</span></div>{canEdit && <button className="icon-button danger" aria-label={`Delete ${report.name}`} onClick={() => { if (window.confirm(`Delete ${report.name} and its clips?`)) remove.mutate({ reportId: report.id }, { onSuccess: () => { void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }); void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() }); } }); }}><Trash2 /></button>}</div>)}</div> : <div className="modal-empty">{canEdit ? 'No report loaded yet. Add a CSV export to start.' : 'No reports are available.'}</div>}
+        {canEdit ? <div className="modal-actions top-actions"><button className="btn primary" onClick={() => { setUploadOpen(true); setError(''); }}><Upload /> Add data</button></div>
+          : <div className="permission-note">Viewer access is read-only. An Editor or Administrator can add and delete imported data.</div>}
+        {reports.length ? <div className="report-rows">{reports.map((report) => <div className="report-row" key={report.id}><div><strong>Imported data</strong><span>{report.clipCount} clips · added {formatDate(report.uploadedAt)}</span></div>{canEdit && <button className="icon-button danger" aria-label="Delete imported data" onClick={() => { if (window.confirm('Delete this imported data and its clips?')) remove.mutate({ reportId: report.id }, { onSuccess: () => { void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }); void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() }); } }); }}><Trash2 /></button>}</div>)}</div> : <div className="modal-empty">{canEdit ? 'No imported data yet. Add a CSV to start.' : 'No imported data is available.'}</div>}
       </>}
     </div>
   </div>;
@@ -681,7 +670,7 @@ function UserManager({ currentUserId, onClose }: { currentUserId: number; onClos
   };
 
   const deleteAccount = (user: User) => {
-    if (!window.confirm(`Delete ${user.email}? Their reports and sessions will also be removed.`)) return;
+    if (!window.confirm(`Delete ${user.email}? Their imported data and sessions will also be removed.`)) return;
     setError('');
     remove.mutate({ userId: user.id }, {
       onSuccess: () => void localQueryClient.invalidateQueries({ queryKey: getListUsersQueryKey() }),
