@@ -1,0 +1,55 @@
+.archive-workbench .awb-prototype-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  border-bottom: 1px solid #5b5140;
+  background: #332d22;
+  color: #e9ddbd;
+  font: 11px "IBM Plex Sans", sans-serif;
+}
+
+.archive-workbench .awb-prototype-notice span {
+  flex: none;
+  color: #f0c657;
+  font: 600 10px "IBM Plex Sans Condensed", sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.archive-workbench .awb-prototype-notice p {
+  margin: 0;
+  color: #d4c9ad;
+}
+
+.archive-workbench .awb-prototype-notice button {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f0c657;
+  font: 600 10px "IBM Plex Sans Condensed", sans-serif;
+  letter-spacing: .08em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.archive-workbench .awb-prototype-notice button:hover {
+  color: #fff1ca;
+}
+
+@media (max-width: 620px) {
+  .archive-workbench .awb-prototype-notice {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 9px 14px;
+  }
+
+  .archive-workbench .awb-prototype-notice p {
+    flex: 1 1 220px;
+  }
+
+  .archive-workbench .awb-prototype-notice button {
+    margin-left: 0;
+  }
+}
