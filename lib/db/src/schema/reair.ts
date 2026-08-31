@@ -95,6 +95,55 @@ export const clipsTable = pgTable("reair_clips", {
   flagCount: integer("flag_count").notNull().default(0),
 });
 
+export const clipReviewsTable = pgTable(
+  "reair_clip_reviews",
+  {
+    id: serial("id").primaryKey(),
+    clipKey: text("clip_key").notNull(),
+    episodeNotes: text("episode_notes").notNull().default(""),
+    updatedBy: integer("updated_by")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [uniqueIndex("reair_clip_reviews_clip_key_idx").on(table.clipKey)],
+);
+
+export const clipReviewAnnotationsTable = pgTable(
+  "reair_clip_review_annotations",
+  {
+    id: serial("id").primaryKey(),
+    clipKey: text("clip_key").notNull(),
+    noteKind: text("note_kind").notNull(),
+    noteKey: text("note_key").notNull(),
+    note: text("note").notNull().default(""),
+    status: text("status"),
+    updatedBy: integer("updated_by")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("reair_clip_review_annotations_identity_idx").on(
+      table.clipKey,
+      table.noteKind,
+      table.noteKey,
+    ),
+  ],
+);
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({
   id: true,
   createdAt: true,
@@ -108,12 +157,30 @@ export const insertReportSchema = createInsertSchema(reportsTable).omit({
   uploadedAt: true,
 });
 export const insertClipSchema = createInsertSchema(clipsTable).omit({ id: true });
+export const insertClipReviewSchema = createInsertSchema(clipReviewsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertClipReviewAnnotationSchema = createInsertSchema(
+  clipReviewAnnotationsTable,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type InsertReport = z.infer<typeof insertReportSchema>;
 export type InsertClip = z.infer<typeof insertClipSchema>;
+export type InsertClipReview = z.infer<typeof insertClipReviewSchema>;
+export type InsertClipReviewAnnotation = z.infer<
+  typeof insertClipReviewAnnotationSchema
+>;
 export type User = typeof usersTable.$inferSelect;
 export type Session = typeof sessionsTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
 export type Clip = typeof clipsTable.$inferSelect;
+export type ClipReview = typeof clipReviewsTable.$inferSelect;
+export type ClipReviewAnnotation = typeof clipReviewAnnotationsTable.$inferSelect;

@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CalendarDays,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -13,9 +14,11 @@ import {
   FolderOpen,
   LoaderCircle,
   LogOut,
+  MessageSquareText,
   Printer,
   Radio,
   Search,
+  StickyNote,
   Trash2,
   Upload,
   UserPlus,
@@ -26,21 +29,28 @@ import {
 import {
   getListUsersQueryKey,
   getGetCurrentUserQueryKey,
+  getGetClipReviewQueryKey,
   getListClipsQueryKey,
   getListReportsQueryKey,
   useCreateUser,
   useDeleteReport,
   useDeleteUser,
   useGetCurrentUser,
+  useGetClipReview,
   useListClips,
   useListReports,
   useListUsers,
   useLogin,
   useLogout,
   useUpdateUserRole,
+  useUpdateClipReview,
+  useUpdateClipReviewAnnotation,
   useUploadReport,
   type Clip,
+  type ClipReview,
   type Report,
+  type ReviewAnnotation,
+  type ReviewNoteKind,
   type User,
   type UserRole,
 } from '@workspace/api-client-react';
@@ -54,6 +64,15 @@ import { Badge } from '@workspace/reair-review-system/components/ui/badge';
 import { Button } from '@workspace/reair-review-system/components/ui/button';
 import { Card, CardContent } from '@workspace/reair-review-system/components/ui/card';
 import { Input } from '@workspace/reair-review-system/components/ui/input';
+import { Textarea } from '@workspace/reair-review-system/components/ui/textarea';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@workspace/reair-review-system/components/ui/context-menu';
 
 const queryClient = new QueryClient();
 
@@ -129,6 +148,23 @@ function highlight(value: string, query: string) {
 
 function noteDomId(kind: 'amber' | 'cyan', index: number) {
   return `note-${kind}-${index}`;
+}
+
+function reviewNoteKey(kind: ReviewNoteKind, note: { tc: string; secs: number | null; text: string }) {
+  return `${kind}|${note.tc}|${note.secs ?? ''}|${note.text.trim().toLowerCase()}`;
+}
+
+function reviewStatusLabel(status: ReviewAnnotation['status']) {
+  if (status === 'good-to-re-air') return 'Good to re-air';
+  if (status === 'needs-edit') return 'Needs edit';
+  return null;
+}
+
+function queueDispositionClass(disposition: string | undefined) {
+  if (disposition === 'Needs edit') return 'disposition-needs-edit';
+  if (disposition === 'Hold for context') return 'disposition-hold';
+  if (disposition === 'Clear for re-air') return 'disposition-clear';
+  return '';
 }
 
 function Logo() {
@@ -231,6 +267,12 @@ function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [decisions, setDecisions] = useState<Record<string, string>>({});
+  const [episodeDraft, setEpisodeDraft] = useState('');
+  const [episodeDirty, setEpisodeDirty] = useState(false);
+  const [reviewSaveError, setReviewSaveError] = useState('');
+  const [editingAnnotation, setEditingAnnotation] = useState<{ kind: ReviewNoteKind; noteKey: string } | null>(null);
+  const [annotationDraft, setAnnotationDraft] = useState('');
+  const [annotationError, setAnnotationError] = useState('');
   const [dispositionFilter, setDispositionFilter] = useState<DispositionFilter>('all');
   const [sort, setSort] = useState<SortKey>('new');
   const [showReports, setShowReports] = useState(false);
@@ -239,7 +281,18 @@ function Workspace() {
   const { data: session } = useGetCurrentUser();
   const { data: reports = [] } = useListReports();
   const { data: clips = [], isLoading: clipsLoading, isError: clipsError, refetch: refetchClips } = useListClips();
+  const { data: clipReview, isLoading: reviewLoading, isError: reviewError } = useGetClipReview(selectedId ?? '', {
+    query: {
+      queryKey: getGetClipReviewQueryKey(selectedId ?? ''),
+      enabled: Boolean(selectedId),
+      refetchInterval: 5_000,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
+    },
+  });
   const logout = useLogout();
+  const saveEpisodeReview = useUpdateClipReview();
+  const saveAnnotation = useUpdateClipReviewAnnotation();
   const currentRole = session?.user?.role ?? 'viewer';
   const canEditReports = currentRole === 'admin' || currentRole === 'editor';
 
@@ -260,6 +313,19 @@ function Workspace() {
     setSelectedId(view[0]?.id ?? null);
   }, [selectedId, view]);
 
+  useEffect(() => {
+    setEpisodeDraft('');
+    setEpisodeDirty(false);
+    setReviewSaveError('');
+    setEditingAnnotation(null);
+    setAnnotationDraft('');
+    setAnnotationError('');
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!episodeDirty) setEpisodeDraft(clipReview?.episodeNotes ?? '');
+  }, [clipReview?.episodeNotes, episodeDirty]);
+
   const selected = view.find((clip) => clip.id === selectedId) ?? view[0] ?? null;
   const selectedIndex = Math.max(0, view.findIndex((clip) => clip.id === selected?.id));
   const reviewed = clips.filter((clip) => decisions[clip.id]).length;
@@ -278,6 +344,58 @@ function Workspace() {
   const timedNotes = selected?.sensitiveNotes ?? [];
   const dateNotes = selected?.dateNotes ?? [];
   const people = selected ? [...selected.hosts, ...selected.guests] : [];
+  const annotationById = useMemo(
+    () => new Map((clipReview?.annotations ?? []).map((annotation) => [`${annotation.kind}|${annotation.noteKey}`, annotation])),
+    [clipReview?.annotations],
+  );
+
+  const updateReviewCache = (clipId: string, review: ClipReview) => {
+    localQueryClient.setQueryData(getGetClipReviewQueryKey(clipId), review);
+  };
+
+  const saveEpisodeNotes = () => {
+    if (!selectedId) return;
+    const clipId = selectedId;
+    setReviewSaveError('');
+    saveEpisodeReview.mutate({ clipId, data: { episodeNotes: episodeDraft } }, {
+      onSuccess: (review) => {
+        updateReviewCache(clipId, review);
+        setEpisodeDraft(review.episodeNotes);
+        setEpisodeDirty(false);
+      },
+      onError: () => setReviewSaveError('Episode notes could not be saved. Try again.'),
+    });
+  };
+
+  const saveFlagAnnotation = (
+    kind: ReviewNoteKind,
+    noteKey: string,
+    note: string,
+    status: ReviewAnnotation['status'],
+  ) => {
+    if (!selectedId) return;
+    const clipId = selectedId;
+    setAnnotationError('');
+    saveAnnotation.mutate({
+      clipId,
+      data: { kind, noteKey, note, status },
+    }, {
+      onSuccess: (review) => {
+        updateReviewCache(clipId, review);
+        if (selectedId === clipId) {
+          setEditingAnnotation(null);
+          setAnnotationDraft('');
+        }
+      },
+      onError: () => setAnnotationError('This flag annotation could not be saved. Try again.'),
+    });
+  };
+
+  const beginAnnotationEdit = (kind: ReviewNoteKind, noteKey: string, annotation?: ReviewAnnotation) => {
+    setEditingAnnotation({ kind, noteKey });
+    setAnnotationDraft(annotation?.note ?? '');
+    setAnnotationError('');
+  };
 
   return <main className="min-h-screen bg-background font-sans text-foreground">
     <header className="flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
@@ -290,13 +408,20 @@ function Workspace() {
       </div>
     </header>
 
-    {clipsLoading || clipsError || !selected ? <section className="grid min-h-[calc(100vh-4rem)] place-items-center bg-card px-6 text-center">
+    {clipsLoading || clipsError || (!selected && clips.length === 0) ? <section className="grid min-h-[calc(100vh-4rem)] place-items-center bg-card px-6 text-center">
       <div className="max-w-lg">
         <p className="font-serif text-xs font-bold uppercase tracking-[0.18em] text-primary">Archive connection</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">{clipsLoading ? 'Loading live archive' : clipsError ? 'Archive unavailable' : 'Your archive is empty'}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{clipsLoading ? 'Loading your Re-Air archive…' : clipsError ? 'Your Re-Air archive could not be loaded.' : 'Add a CSV to begin guided review.'}</p>
         {clipsError && <Button className="mt-5" onClick={() => void refetchClips()}>Retry archive</Button>}
         {!clipsLoading && !clipsError && canEditReports && <Button className="mt-5" onClick={() => setShowReports(true)}>Add data</Button>}
+      </div>
+    </section> : !selected ? <section className="grid min-h-[calc(100vh-4rem)] place-items-center bg-card px-6 text-center">
+      <div className="max-w-lg">
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.18em] text-primary">Review queue</p>
+        <h1 className="mt-2 font-serif text-3xl font-bold">No clips match this filter</h1>
+        <p className="mt-2 text-sm text-muted-foreground">There are no clips in the current search or disposition filter.</p>
+        <Button className="mt-5" onClick={() => { setQuery(''); setDispositionFilter('all'); }}>Clear filters</Button>
       </div>
     </section> : <>
       <section className="grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress and disposition filters">
@@ -337,8 +462,8 @@ function Workspace() {
             </div>
           </div>
            <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
-            <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); }}>
-               <span className="min-w-0 wrap-text"><span className="block break-words font-mono text-xs">{clip.id}</span><span className="mt-1 block break-words text-xs leading-5 opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1 block break-words font-mono text-[0.65rem] leading-5 opacity-65">Original airdate · {formatDate(clip.originalAir)}</span><span className="mt-1.5 block break-words font-mono text-[0.65rem] leading-5 opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
+            <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className={`queue-clip h-auto w-full justify-start whitespace-normal text-left ${queueDispositionClass(decisions[clip.id])}`} data-disposition={decisions[clip.id]} onClick={() => { setSelectedId(clip.id); }}>
+               <span className="min-w-0 wrap-text"><span className="block break-words font-mono text-xs">{clip.id}</span><span className="mt-1 block break-words text-xs leading-5 opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1 block break-words font-mono text-[0.65rem] leading-5 opacity-65">Original airdate · {formatDate(clip.originalAir)}</span>{decisions[clip.id] ? <span className={`mt-1.5 block break-words font-mono text-[0.65rem] leading-5 queue-disposition-label ${queueDispositionClass(decisions[clip.id])}`}>{decisions[clip.id]}</span> : <span className="mt-1.5 block break-words font-mono text-[0.65rem] leading-5 opacity-80">{`${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span>}</span>
             </Button>)}</div>
           </div>
         </aside>
@@ -359,7 +484,32 @@ function Workspace() {
              <div className="mt-2 flex justify-between font-mono text-[0.65rem] text-muted-foreground"><span>00:00</span><span>End</span></div>
            </div>
 
-          <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
+           <section className="mt-7 border-t border-border pt-5">
+             <div className="flex flex-wrap items-center justify-between gap-3">
+               <div className="flex items-center gap-2"><StickyNote className="h-4 w-4 text-primary" /><h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Episode notes</h2></div>
+               <span className="font-mono text-[0.65rem] text-muted-foreground">{episodeDraft.length} / 10,000</span>
+             </div>
+             <p className="mt-2 text-xs leading-5 text-muted-foreground">Shared handoff guidance for the editor preparing this clip.</p>
+             <Textarea
+               className="handoff-textarea mt-3"
+               aria-label="Episode handoff notes"
+               maxLength={10000}
+               value={episodeDraft}
+               onChange={(event) => { setEpisodeDraft(event.target.value); setEpisodeDirty(true); setReviewSaveError(''); }}
+               placeholder={reviewLoading ? 'Loading saved notes…' : 'Add context for the editor…'}
+               disabled={reviewLoading}
+             />
+             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+               <span className="text-xs text-muted-foreground">{reviewError ? 'Saved notes are temporarily unavailable.' : 'Notes are shared with every reviewer.'}</span>
+               <Button size="sm" onClick={saveEpisodeNotes} disabled={!episodeDirty || saveEpisodeReview.isPending || reviewLoading}>
+                 {saveEpisodeReview.isPending ? <LoaderCircle className="spin" /> : <Check />}
+                 {saveEpisodeReview.isPending ? 'Saving…' : 'Save notes'}
+               </Button>
+             </div>
+             {reviewSaveError && <p className="mt-2 text-xs text-destructive" role="alert">{reviewSaveError}</p>}
+           </section>
+
+           <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
             <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
             <div className="mt-4 flex flex-wrap gap-2">{['Needs edit', 'Hold for context', 'Clear for re-air'].map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => setDecisions((current) => ({ ...current, [selected.id]: option }))}>{option}</Button>)}</div>
             {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Recorded locally as “{decisions[selected.id]}”. No archive data was changed.</p>}
@@ -375,11 +525,45 @@ function Workspace() {
            <div className="mt-6 grid min-w-0 gap-5 border-t border-border pt-5 xl:grid-cols-2">
              <section className="min-w-0">
               <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Timed material</h2>
-               {timedNotes.length ? <div className="mt-3 grid gap-2">{timedNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid min-w-0 gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="wrap-text break-words text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 wrap-text break-words text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
+                {timedNotes.length ? <div className="mt-3 grid gap-2">{timedNotes.map((note, index) => {
+                  const kind: ReviewNoteKind = 'timed';
+                  const noteKey = reviewNoteKey(kind, note);
+                  return <ReviewNoteCard
+                    key={`${noteKey}-${index}`}
+                    kind={kind}
+                    note={note}
+                    annotation={annotationById.get(`${kind}|${noteKey}`)}
+                    editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey}
+                    draft={annotationDraft}
+                    error={annotationError}
+                    saving={saveAnnotation.isPending}
+                    onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))}
+                    onDraftChange={setAnnotationDraft}
+                    onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)}
+                    onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)}
+                  />;
+                })}</div> : <p className="mt-3 wrap-text break-words text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
             </section>
              <section className="min-w-0">
               <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Date notes</h2>
-               {dateNotes.length ? <div className="mt-3 grid gap-2">{dateNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid min-w-0 gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="wrap-text break-words text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 wrap-text break-words text-sm leading-6 text-muted-foreground">No date notes were recorded for this clip.</p>}
+                {dateNotes.length ? <div className="mt-3 grid gap-2">{dateNotes.map((note, index) => {
+                  const kind: ReviewNoteKind = 'date';
+                  const noteKey = reviewNoteKey(kind, note);
+                  return <ReviewNoteCard
+                    key={`${noteKey}-${index}`}
+                    kind={kind}
+                    note={note}
+                    annotation={annotationById.get(`${kind}|${noteKey}`)}
+                    editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey}
+                    draft={annotationDraft}
+                    error={annotationError}
+                    saving={saveAnnotation.isPending}
+                    onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))}
+                    onDraftChange={setAnnotationDraft}
+                    onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)}
+                    onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)}
+                  />;
+                })}</div> : <p className="mt-3 wrap-text break-words text-sm leading-6 text-muted-foreground">No date notes were recorded for this clip.</p>}
             </section>
           </div>
 
@@ -390,6 +574,79 @@ function Workspace() {
     {showReports && <ReportManager reports={reports} canEdit={canEditReports} onClose={() => setShowReports(false)} />}
     {showUsers && currentRole === 'admin' && session?.user && <UserManager currentUserId={session.user.id} onClose={() => setShowUsers(false)} />}
   </main>;
+}
+
+function ReviewNoteCard({
+  kind,
+  note,
+  annotation,
+  editing,
+  draft,
+  error,
+  saving,
+  onEdit,
+  onDraftChange,
+  onSave,
+  onStatus,
+}: {
+  kind: ReviewNoteKind;
+  note: { tc: string; text: string };
+  annotation?: ReviewAnnotation;
+  editing: boolean;
+  draft: string;
+  error: string;
+  saving: boolean;
+  onEdit: () => void;
+  onDraftChange: (value: string) => void;
+  onSave: () => void;
+  onStatus: (status: ReviewAnnotation['status']) => void;
+}) {
+  const statusLabel = reviewStatusLabel(annotation?.status ?? null);
+  const kindLabel = kind === 'timed' ? 'Timed material' : 'Date note';
+
+  return <ContextMenu>
+    <ContextMenuTrigger asChild>
+      <Card className={`review-flag-card${annotation?.status ? ` ${annotation.status}` : ''}`} data-testid={`review-flag-${kind}-${note.tc || 'untimed'}`}>
+        <CardContent className="grid min-w-0 gap-2 p-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge>
+            {statusLabel && <Badge variant={annotation?.status === 'needs-edit' ? 'destructive' : 'outline'} className="review-status-badge"><CheckCircle2 className="h-3 w-3" />{statusLabel}</Badge>}
+          </div>
+          <p className="wrap-text break-words text-xs leading-5">{note.text}</p>
+          {annotation?.note && <div className="reviewer-note"><MessageSquareText className="mt-0.5 h-3.5 w-3.5 flex-none text-primary" /><p className="wrap-text break-words text-xs leading-5">{annotation.note}</p></div>}
+          {editing && <div className="review-note-editor" onContextMenu={(event) => event.stopPropagation()}>
+            <label htmlFor={`annotation-${kind}-${note.tc || 'untimed'}`} className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">Editor note</label>
+            <Textarea
+              id={`annotation-${kind}-${note.tc || 'untimed'}`}
+              className="handoff-textarea mt-2 min-h-20"
+              maxLength={5000}
+              autoFocus
+              value={draft}
+              onChange={(event) => onDraftChange(event.target.value)}
+              placeholder="Add a handoff note for this flag…"
+            />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-[0.6rem] text-muted-foreground">{draft.length} / 5,000</span>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="ghost" onClick={onEdit} disabled={saving}>Cancel</Button>
+                <Button type="button" size="sm" onClick={onSave} disabled={saving}>{saving ? <LoaderCircle className="spin" /> : <Check />}{saving ? 'Saving…' : 'Save note'}</Button>
+              </div>
+            </div>
+            {error && <p className="mt-2 text-xs text-destructive" role="alert">{error}</p>}
+          </div>}
+          {annotation?.updatedBy && <p className="review-annotation-meta">Shared annotation · updated by {annotation.updatedBy}</p>}
+        </CardContent>
+      </Card>
+    </ContextMenuTrigger>
+    <ContextMenuContent className="w-56">
+      <ContextMenuLabel>{kindLabel}</ContextMenuLabel>
+      <ContextMenuItem onSelect={onEdit}><MessageSquareText className="mr-2 h-4 w-4" />{annotation?.note ? 'Edit note' : 'Add note'}</ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onSelect={() => onStatus('good-to-re-air')}><CheckCircle2 className="mr-2 h-4 w-4 text-chart-3" />Good to re-air</ContextMenuItem>
+      <ContextMenuItem onSelect={() => onStatus('needs-edit')}><Flag className="mr-2 h-4 w-4 text-destructive" />Needs edit</ContextMenuItem>
+      {annotation?.status && <ContextMenuItem onSelect={() => onStatus(null)}><X className="mr-2 h-4 w-4" />Clear item status</ContextMenuItem>}
+    </ContextMenuContent>
+  </ContextMenu>;
 }
 
 function Stat({ value, label, flagged = false, wide = false }: { value: number | string; label: string; flagged?: boolean; wide?: boolean }) {

@@ -1,3 +1,4 @@
 - [Docker pnpm builds](docker-pnpm-builds.md) — pin the workspace-compatible pnpm version in Docker to avoid blocked esbuild lifecycle scripts.
 - [Re-Air role model](reair-role-model.md) — roles govern a shared archive; permissions are server-enforced and refreshed in active clients.
 - [AI report ingestion ownership](ai-report-ingestion.md) — machine posts use a bearer token and are attributed to the configured administrator; browser uploads stay session-authenticated.
+- [Editor handoff model](editor-handoff-model.md) — review notes and per-flag decisions belong to the shared merged clip identity.

@@ -164,6 +164,27 @@ export const UploadReportResponse = zod.object({
 
 
 /**
+ * Adds a parsed CSV report to the shared archive using the configured machine-to-machine bearer token.
+ * @summary Ingest a CSV report from an AI system
+ */
+
+
+
+
+export const IngestReportBody = zod.object({
+  "name": zod.string().min(1),
+  "content": zod.string().min(1)
+})
+
+export const IngestReportResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "clipCount": zod.number(),
+  "uploadedAt": zod.string()
+})
+
+
+/**
  * @summary Delete an uploaded report
  */
 export const DeleteReportParams = zod.object({
@@ -203,6 +224,90 @@ export const ListClipsResponseItem = zod.object({
   "flagCount": zod.number()
 })
 export const ListClipsResponse = zod.array(ListClipsResponseItem)
+
+
+/**
+ * @summary Get editor handoff notes for a clip
+ */
+export const GetClipReviewParams = zod.object({
+  "clipId": zod.coerce.string()
+})
+
+export const GetClipReviewResponse = zod.object({
+  "clipId": zod.string(),
+  "episodeNotes": zod.string(),
+  "annotations": zod.array(zod.object({
+  "kind": zod.enum(['timed', 'date']),
+  "noteKey": zod.string(),
+  "note": zod.string(),
+  "status": zod.union([zod.literal('good-to-re-air'),zod.literal('needs-edit'),zod.literal(null)]).nullable(),
+  "updatedAt": zod.string(),
+  "updatedBy": zod.string()
+}))
+})
+
+
+/**
+ * @summary Save episode-level editor handoff notes
+ */
+export const UpdateClipReviewParams = zod.object({
+  "clipId": zod.coerce.string()
+})
+
+export const updateClipReviewBodyEpisodeNotesMax = 10000;
+
+
+
+export const UpdateClipReviewBody = zod.object({
+  "episodeNotes": zod.string().max(updateClipReviewBodyEpisodeNotesMax)
+})
+
+export const UpdateClipReviewResponse = zod.object({
+  "clipId": zod.string(),
+  "episodeNotes": zod.string(),
+  "annotations": zod.array(zod.object({
+  "kind": zod.enum(['timed', 'date']),
+  "noteKey": zod.string(),
+  "note": zod.string(),
+  "status": zod.union([zod.literal('good-to-re-air'),zod.literal('needs-edit'),zod.literal(null)]).nullable(),
+  "updatedAt": zod.string(),
+  "updatedBy": zod.string()
+}))
+})
+
+
+/**
+ * @summary Save a per-flag editor handoff annotation
+ */
+export const UpdateClipReviewAnnotationParams = zod.object({
+  "clipId": zod.coerce.string()
+})
+
+export const updateClipReviewAnnotationBodyNoteKeyMax = 2048;
+
+export const updateClipReviewAnnotationBodyNoteMax = 5000;
+
+
+
+export const UpdateClipReviewAnnotationBody = zod.object({
+  "kind": zod.enum(['timed', 'date']),
+  "noteKey": zod.string().min(1).max(updateClipReviewAnnotationBodyNoteKeyMax),
+  "note": zod.string().max(updateClipReviewAnnotationBodyNoteMax),
+  "status": zod.union([zod.literal('good-to-re-air'),zod.literal('needs-edit'),zod.literal(null)]).nullable()
+})
+
+export const UpdateClipReviewAnnotationResponse = zod.object({
+  "clipId": zod.string(),
+  "episodeNotes": zod.string(),
+  "annotations": zod.array(zod.object({
+  "kind": zod.enum(['timed', 'date']),
+  "noteKey": zod.string(),
+  "note": zod.string(),
+  "status": zod.union([zod.literal('good-to-re-air'),zod.literal('needs-edit'),zod.literal(null)]).nullable(),
+  "updatedAt": zod.string(),
+  "updatedBy": zod.string()
+}))
+})
 
 
 /**

@@ -83,6 +83,57 @@ export interface Note {
   text: string;
 }
 
+export type ReviewNoteKind = typeof ReviewNoteKind[keyof typeof ReviewNoteKind];
+
+
+export const ReviewNoteKind = {
+  timed: 'timed',
+  date: 'date',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ReviewAnnotationStatus = typeof ReviewAnnotationStatus[keyof typeof ReviewAnnotationStatus] | null;
+
+
+export const ReviewAnnotationStatus = {
+  'good-to-re-air': 'good-to-re-air',
+  'needs-edit': 'needs-edit',
+} as const;
+
+export interface ReviewAnnotation {
+  kind: ReviewNoteKind;
+  noteKey: string;
+  note: string;
+  status: ReviewAnnotationStatus | null;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface ClipReview {
+  clipId: string;
+  episodeNotes: string;
+  annotations: ReviewAnnotation[];
+}
+
+export interface ClipReviewUpdate {
+  /** @maxLength 10000 */
+  episodeNotes: string;
+}
+
+export interface ClipReviewAnnotationUpdate {
+  kind: ReviewNoteKind;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  noteKey: string;
+  /** @maxLength 5000 */
+  note: string;
+  status: ReviewAnnotationStatus | null;
+}
+
 export interface Clip {
   id: string;
   reportId: number;

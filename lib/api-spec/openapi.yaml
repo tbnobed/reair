@@ -282,6 +282,81 @@ paths:
                   $ref: "#/components/schemas/Clip"
         "401":
           description: Authentication required
+  /clips/{clipId}/review:
+    get:
+      operationId: getClipReview
+      tags: [clips]
+      summary: Get editor handoff notes for a clip
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClipId"
+      responses:
+        "200":
+          description: Saved handoff notes and per-flag annotations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClipReview"
+        "401":
+          description: Authentication required
+        "404":
+          description: Clip not found
+    patch:
+      operationId: updateClipReview
+      tags: [clips]
+      summary: Save episode-level editor handoff notes
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClipReviewUpdate"
+      responses:
+        "200":
+          description: Updated handoff notes and per-flag annotations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClipReview"
+        "400":
+          description: Invalid handoff notes
+        "401":
+          description: Authentication required
+        "404":
+          description: Clip not found
+  /clips/{clipId}/review/annotations:
+    put:
+      operationId: updateClipReviewAnnotation
+      tags: [clips]
+      summary: Save a per-flag editor handoff annotation
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClipReviewAnnotationUpdate"
+      responses:
+        "200":
+          description: Updated handoff notes and per-flag annotations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClipReview"
+        "400":
+          description: Invalid annotation
+        "401":
+          description: Authentication required
+        "404":
+          description: Clip not found
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -314,6 +389,12 @@ components:
       required: true
       schema:
         type: number
+    ClipId:
+      name: clipId
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -421,6 +502,62 @@ components:
         text:
           type: string
       required: [tc, secs, text]
+    ReviewNoteKind:
+      type: string
+      enum: [timed, date]
+    ReviewAnnotationStatus:
+      type: ["string", "null"]
+      enum: [good-to-re-air, needs-edit, null]
+    ReviewAnnotation:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/ReviewNoteKind"
+        noteKey:
+          type: string
+        note:
+          type: string
+        status:
+          $ref: "#/components/schemas/ReviewAnnotationStatus"
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required: [kind, noteKey, note, status, updatedAt, updatedBy]
+    ClipReview:
+      type: object
+      properties:
+        clipId:
+          type: string
+        episodeNotes:
+          type: string
+        annotations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewAnnotation"
+      required: [clipId, episodeNotes, annotations]
+    ClipReviewUpdate:
+      type: object
+      properties:
+        episodeNotes:
+          type: string
+          maxLength: 10000
+      required: [episodeNotes]
+    ClipReviewAnnotationUpdate:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/ReviewNoteKind"
+        noteKey:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        note:
+          type: string
+          maxLength: 5000
+        status:
+          $ref: "#/components/schemas/ReviewAnnotationStatus"
+      required: [kind, noteKey, note, status]
     Clip:
       type: object
       properties:

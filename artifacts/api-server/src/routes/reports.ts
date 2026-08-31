@@ -5,14 +5,24 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import {
   db,
   clipsTable,
+  clipReviewAnnotationsTable,
+  clipReviewsTable,
   pendingFileDeletionsTable,
   reportsTable,
   usersTable,
 } from "@workspace/db";
 import {
   DeleteReportParams,
+  GetClipReviewParams,
+  GetClipReviewResponse,
   ListClipsResponse,
   ListReportsResponse,
+  UpdateClipReviewAnnotationBody,
+  UpdateClipReviewAnnotationParams,
+  UpdateClipReviewAnnotationResponse,
+  UpdateClipReviewBody,
+  UpdateClipReviewParams,
+  UpdateClipReviewResponse,
   UploadReportBody,
   UploadReportResponse,
 } from "@workspace/api-zod";
@@ -160,6 +170,49 @@ function clipResponse(clip: typeof clipsTable.$inferSelect) {
 }
 
 type ClipResponse = ReturnType<typeof clipResponse>;
+
+async function clipExists(clipId: string): Promise<boolean> {
+  const [clip] = await db
+    .select({ id: clipsTable.id })
+    .from(clipsTable)
+    .where(eq(clipsTable.clipKey, clipId))
+    .limit(1);
+  return Boolean(clip);
+}
+
+async function clipReviewResponse(clipId: string) {
+  const [review] = await db
+    .select()
+    .from(clipReviewsTable)
+    .where(eq(clipReviewsTable.clipKey, clipId))
+    .limit(1);
+  const annotations = await db
+    .select({
+      kind: clipReviewAnnotationsTable.noteKind,
+      noteKey: clipReviewAnnotationsTable.noteKey,
+      note: clipReviewAnnotationsTable.note,
+      status: clipReviewAnnotationsTable.status,
+      updatedAt: clipReviewAnnotationsTable.updatedAt,
+      updatedBy: usersTable.email,
+    })
+    .from(clipReviewAnnotationsTable)
+    .innerJoin(usersTable, eq(usersTable.id, clipReviewAnnotationsTable.updatedBy))
+    .where(eq(clipReviewAnnotationsTable.clipKey, clipId))
+    .orderBy(clipReviewAnnotationsTable.id);
+
+  return {
+    clipId,
+    episodeNotes: review?.episodeNotes ?? "",
+    annotations: annotations.map((annotation) => ({
+      kind: annotation.kind as "timed" | "date",
+      noteKey: annotation.noteKey,
+      note: annotation.note,
+      status: annotation.status as "good-to-re-air" | "needs-edit" | null,
+      updatedAt: annotation.updatedAt.toISOString(),
+      updatedBy: annotation.updatedBy,
+    })),
+  };
+}
 
 function mergeResponseStrings(left: string[], right: string[]): string[] {
   return [...new Set([...left, ...right].map((value) => value.trim()).filter(Boolean))];
@@ -319,6 +372,117 @@ router.get("/clips", async (_request, response): Promise<void> => {
     .from(clipsTable)
     .orderBy(desc(clipsTable.id));
   response.json(ListClipsResponse.parse(mergeResponseClips(rows.map((row) => clipResponse(row.clip)))));
+});
+
+router.get("/clips/:clipId/review", async (request, response): Promise<void> => {
+  const params = GetClipReviewParams.safeParse(request.params);
+  if (!params.success) {
+    response.status(400).json({ error: "Invalid clip id." });
+    return;
+  }
+  if (!(await clipExists(params.data.clipId))) {
+    response.status(404).json({ error: "Clip not found." });
+    return;
+  }
+  response.json(GetClipReviewResponse.parse(await clipReviewResponse(params.data.clipId)));
+});
+
+router.patch("/clips/:clipId/review", async (request, response): Promise<void> => {
+  const params = UpdateClipReviewParams.safeParse(request.params);
+  if (!params.success) {
+    response.status(400).json({ error: "Invalid clip id." });
+    return;
+  }
+  const parsed = UpdateClipReviewBody.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ error: "Episode notes are invalid." });
+    return;
+  }
+  if (!(await clipExists(params.data.clipId))) {
+    response.status(404).json({ error: "Clip not found." });
+    return;
+  }
+
+  const episodeNotes = parsed.data.episodeNotes;
+  if (episodeNotes.trim()) {
+    await db
+      .insert(clipReviewsTable)
+      .values({
+        clipKey: params.data.clipId,
+        episodeNotes,
+        updatedBy: request.currentUser!.id,
+      })
+      .onConflictDoUpdate({
+        target: clipReviewsTable.clipKey,
+        set: {
+          episodeNotes,
+          updatedBy: request.currentUser!.id,
+          updatedAt: new Date(),
+        },
+      });
+  } else {
+    await db
+      .delete(clipReviewsTable)
+      .where(eq(clipReviewsTable.clipKey, params.data.clipId));
+  }
+
+  response.json(UpdateClipReviewResponse.parse(await clipReviewResponse(params.data.clipId)));
+});
+
+router.put("/clips/:clipId/review/annotations", async (request, response): Promise<void> => {
+  const params = UpdateClipReviewAnnotationParams.safeParse(request.params);
+  if (!params.success) {
+    response.status(400).json({ error: "Invalid clip id." });
+    return;
+  }
+  const parsed = UpdateClipReviewAnnotationBody.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ error: "Annotation is invalid." });
+    return;
+  }
+  if (!(await clipExists(params.data.clipId))) {
+    response.status(404).json({ error: "Clip not found." });
+    return;
+  }
+
+  const { kind, noteKey, note, status } = parsed.data;
+  if (!note.trim() && status === null) {
+    await db
+      .delete(clipReviewAnnotationsTable)
+      .where(and(
+        eq(clipReviewAnnotationsTable.clipKey, params.data.clipId),
+        eq(clipReviewAnnotationsTable.noteKind, kind),
+        eq(clipReviewAnnotationsTable.noteKey, noteKey),
+      ));
+  } else {
+    await db
+      .insert(clipReviewAnnotationsTable)
+      .values({
+        clipKey: params.data.clipId,
+        noteKind: kind,
+        noteKey,
+        note,
+        status,
+        updatedBy: request.currentUser!.id,
+      })
+      .onConflictDoUpdate({
+        target: [
+          clipReviewAnnotationsTable.clipKey,
+          clipReviewAnnotationsTable.noteKind,
+          clipReviewAnnotationsTable.noteKey,
+        ],
+        set: {
+          note,
+          status,
+          updatedBy: request.currentUser!.id,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  response.json(
+    UpdateClipReviewAnnotationResponse.parse(await clipReviewResponse(params.data.clipId)),
+  );
 });
 
 export default router;

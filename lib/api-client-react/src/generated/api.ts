@@ -23,6 +23,9 @@ import type {
   AuthCredentials,
   AuthSession,
   Clip,
+  ClipReview,
+  ClipReviewAnnotationUpdate,
+  ClipReviewUpdate,
   CreateUserRequest,
   DashboardSummary,
   HealthStatus,
@@ -796,6 +799,78 @@ export const useUploadReport = <TError = ErrorType<void>,
       return useMutation(getUploadReportMutationOptions(options));
     }
 
+export const getIngestReportUrl = () => {
+
+
+
+
+  return `/api/reports/ingest`
+}
+
+/**
+ * Adds a parsed CSV report to the shared archive using the configured machine-to-machine bearer token.
+ * @summary Ingest a CSV report from an AI system
+ */
+export const ingestReport = async (reportUpload: ReportUpload, options?: Parameters<typeof customFetch>[1]): Promise<Report> => {
+
+  return customFetch<Report>(getIngestReportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reportUpload)
+  }
+);}
+
+
+
+
+
+export const getIngestReportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestReport>>, TError,{data: BodyType<ReportUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestReport>>, TError,{data: BodyType<ReportUpload>}, TContext> => {
+
+const mutationKey = ['ingestReport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestReport>>, {data: BodyType<ReportUpload>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestReport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestReportMutationResult = NonNullable<Awaited<ReturnType<typeof ingestReport>>>
+    export type IngestReportMutationBody = BodyType<ReportUpload>
+    export type IngestReportMutationError = ErrorType<void>
+
+    /**
+ * @summary Ingest a CSV report from an AI system
+ */
+export const useIngestReport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestReport>>, TError,{data: BodyType<ReportUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestReport>>,
+        TError,
+        {data: BodyType<ReportUpload>},
+        TContext
+      > => {
+      return useMutation(getIngestReportMutationOptions(options));
+    }
+
 export const getDeleteReportUrl = (reportId: number,) => {
 
 
@@ -943,6 +1018,227 @@ export function useListClips<TData = Awaited<ReturnType<typeof listClips>>, TErr
 
 
 
+
+export const getGetClipReviewUrl = (clipId: string,) => {
+
+
+
+
+  return `/api/clips/${clipId}/review`
+}
+
+/**
+ * @summary Get editor handoff notes for a clip
+ */
+export const getClipReview = async (clipId: string, options?: Parameters<typeof customFetch>[1]): Promise<ClipReview> => {
+
+  return customFetch<ClipReview>(getGetClipReviewUrl(clipId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetClipReviewQueryKey = (clipId: string,) => {
+    return [
+    `/api/clips/${clipId}/review`
+    ] as const;
+    }
+
+
+export const getGetClipReviewQueryOptions = <TData = Awaited<ReturnType<typeof getClipReview>>, TError = ErrorType<void>>(clipId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClipReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetClipReviewQueryKey(clipId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClipReview>>> = ({ signal }) => getClipReview(clipId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clipId !== null && clipId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getClipReview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetClipReviewQueryResult = NonNullable<Awaited<ReturnType<typeof getClipReview>>>
+export type GetClipReviewQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get editor handoff notes for a clip
+ */
+
+export function useGetClipReview<TData = Awaited<ReturnType<typeof getClipReview>>, TError = ErrorType<void>>(
+ clipId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClipReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetClipReviewQueryOptions(clipId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateClipReviewUrl = (clipId: string,) => {
+
+
+
+
+  return `/api/clips/${clipId}/review`
+}
+
+/**
+ * @summary Save episode-level editor handoff notes
+ */
+export const updateClipReview = async (clipId: string,
+    clipReviewUpdate: ClipReviewUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ClipReview> => {
+
+  return customFetch<ClipReview>(getUpdateClipReviewUrl(clipId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(clipReviewUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateClipReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClipReview>>, TError,{clipId: string;data: BodyType<ClipReviewUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateClipReview>>, TError,{clipId: string;data: BodyType<ClipReviewUpdate>}, TContext> => {
+
+const mutationKey = ['updateClipReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateClipReview>>, {clipId: string;data: BodyType<ClipReviewUpdate>}> = (props) => {
+          const {clipId,data} = props ?? {};
+
+          return  updateClipReview(clipId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateClipReviewMutationResult = NonNullable<Awaited<ReturnType<typeof updateClipReview>>>
+    export type UpdateClipReviewMutationBody = BodyType<ClipReviewUpdate>
+    export type UpdateClipReviewMutationError = ErrorType<void>
+
+    /**
+ * @summary Save episode-level editor handoff notes
+ */
+export const useUpdateClipReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClipReview>>, TError,{clipId: string;data: BodyType<ClipReviewUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateClipReview>>,
+        TError,
+        {clipId: string;data: BodyType<ClipReviewUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateClipReviewMutationOptions(options));
+    }
+
+export const getUpdateClipReviewAnnotationUrl = (clipId: string,) => {
+
+
+
+
+  return `/api/clips/${clipId}/review/annotations`
+}
+
+/**
+ * @summary Save a per-flag editor handoff annotation
+ */
+export const updateClipReviewAnnotation = async (clipId: string,
+    clipReviewAnnotationUpdate: ClipReviewAnnotationUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ClipReview> => {
+
+  return customFetch<ClipReview>(getUpdateClipReviewAnnotationUrl(clipId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(clipReviewAnnotationUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateClipReviewAnnotationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClipReviewAnnotation>>, TError,{clipId: string;data: BodyType<ClipReviewAnnotationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateClipReviewAnnotation>>, TError,{clipId: string;data: BodyType<ClipReviewAnnotationUpdate>}, TContext> => {
+
+const mutationKey = ['updateClipReviewAnnotation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateClipReviewAnnotation>>, {clipId: string;data: BodyType<ClipReviewAnnotationUpdate>}> = (props) => {
+          const {clipId,data} = props ?? {};
+
+          return  updateClipReviewAnnotation(clipId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateClipReviewAnnotationMutationResult = NonNullable<Awaited<ReturnType<typeof updateClipReviewAnnotation>>>
+    export type UpdateClipReviewAnnotationMutationBody = BodyType<ClipReviewAnnotationUpdate>
+    export type UpdateClipReviewAnnotationMutationError = ErrorType<void>
+
+    /**
+ * @summary Save a per-flag editor handoff annotation
+ */
+export const useUpdateClipReviewAnnotation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClipReviewAnnotation>>, TError,{clipId: string;data: BodyType<ClipReviewAnnotationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateClipReviewAnnotation>>,
+        TError,
+        {clipId: string;data: BodyType<ClipReviewAnnotationUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateClipReviewAnnotationMutationOptions(options));
+    }
 
 export const getGetDashboardSummaryUrl = () => {
 
