@@ -24,6 +24,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      REPORT_INGEST_API_KEY: ${REPORT_INGEST_API_KEY:-}
       STORAGE_DIR: /data/uploads
       NODE_ENV: production
       PORT: 5000

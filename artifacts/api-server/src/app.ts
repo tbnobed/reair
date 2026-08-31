@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type ErrorRequestHandler, type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -32,5 +32,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
+
+const bodySizeErrorHandler: ErrorRequestHandler = (error, _request, response, next) => {
+  if (error?.type === "entity.too.large") {
+    response.status(413).json({ error: "Request body exceeds the 10 MB limit." });
+    return;
+  }
+  next(error);
+};
+
+app.use(bodySizeErrorHandler);
 
 export default app;

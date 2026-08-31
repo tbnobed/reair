@@ -42,6 +42,47 @@ viewer. Nginx is configured with the same limit for the Docker deployment.
 Passwords are salted and hashed before they are stored; the browser receives
 only an HTTP-only session cookie.
 
+## AI-system report ingestion
+
+The API also accepts direct report submissions from an AI system. Set
+`REPORT_INGEST_API_KEY` in `.env` to a long random value, for example:
+
+```bash
+openssl rand -hex 32
+```
+
+The machine endpoint is:
+
+```text
+POST /api/reports/ingest
+Authorization: Bearer REPORT_INGEST_API_KEY
+Content-Type: application/json
+```
+
+Send the same JSON shape as the browser upload flow:
+
+```json
+{
+  "name": "ai-generated-report-2026-08-30",
+  "content": "ClipID,Air Dates,Host,Guests,...\n..."
+}
+```
+
+Example:
+
+```bash
+curl -X POST "http://SERVER_IP:8080/api/reports/ingest" \
+  -H "Authorization: Bearer $REPORT_INGEST_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-binary @report-payload.json
+```
+
+The configured `ADMIN_EMAIL` account owns direct submissions in the archive.
+The endpoint uses the same CSV parser, persistence transaction, original-file
+storage, and 10 MB request limit as the manual upload. Keep the token private
+and rotate it by replacing `REPORT_INGEST_API_KEY` and recreating the API
+container. The browser upload option remains available at `POST /api/reports`.
+
 ## Updates and backups
 
 ```bash

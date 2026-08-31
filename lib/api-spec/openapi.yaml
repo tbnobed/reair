@@ -13,7 +13,7 @@ tags:
   - name: auth
     description: Account access
   - name: reports
-    description: Uploaded report management
+    description: Report ingestion and management
   - name: clips
     description: Parsed clip reports
   - name: dashboard
@@ -217,6 +217,35 @@ paths:
           description: Editor or administrator access required
         "401":
           description: Authentication required
+  /reports/ingest:
+    post:
+      operationId: ingestReport
+      tags: [reports]
+      summary: Ingest a CSV report from an AI system
+      description: Adds a parsed CSV report to the shared archive using the configured machine-to-machine bearer token.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportUpload"
+      responses:
+        "201":
+          description: Ingested report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Report payload is invalid or contains no clips
+        "401":
+          description: A valid ingestion bearer token is required
+        "413":
+          description: Request body exceeds the 10 MB limit
+        "503":
+          description: Direct ingestion is not configured with an administrator
   /reports/{reportId}:
     delete:
       operationId: deleteReport
@@ -275,6 +304,9 @@ components:
       type: apiKey
       in: cookie
       name: reair_session
+    bearerAuth:
+      type: http
+      scheme: bearer
   parameters:
     ReportId:
       name: reportId

@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
   db,
@@ -16,8 +16,8 @@ import {
   UploadReportBody,
   UploadReportResponse,
 } from "@workspace/api-zod";
-import { parseReport, type ParsedNote } from "../lib/csv";
-import { requireReportEditor, requireUser } from "../lib/auth";
+import { parseReport, type ParsedClip, type ParsedNote } from "../lib/csv";
+import { isAdministrator, normalizeUserRole, requireReportEditor, requireUser } from "../lib/auth";
 import { processPendingFileDeletions } from "../lib/file-cleanup";
 
 const router: IRouter = Router();
@@ -37,6 +37,105 @@ function reportResponse(
 
 function notes(value: unknown): ParsedNote[] {
   return Array.isArray(value) ? (value as ParsedNote[]) : [];
+}
+
+function hasValidIngestionToken(request: Request): boolean {
+  const expected = process.env.REPORT_INGEST_API_KEY?.trim();
+  const authorization = request.header("authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!expected || !match) return false;
+
+  const provided = Buffer.from(match[1]);
+  const configured = Buffer.from(expected);
+  return provided.length === configured.length && timingSafeEqual(provided, configured);
+}
+
+function requireReportIngestToken(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+): void {
+  if (!hasValidIngestionToken(request)) {
+    response.status(401).json({ error: "A valid report ingestion token is required." });
+    return;
+  }
+  next();
+}
+
+async function configuredIngestionUserId(): Promise<number | null> {
+  const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!configuredEmail) return null;
+
+  const [user] = await db
+    .select({ id: usersTable.id, email: usersTable.email, role: usersTable.role })
+    .from(usersTable)
+    .where(eq(usersTable.email, configuredEmail))
+    .limit(1);
+
+  return user && isAdministrator({
+    email: user.email,
+    role: normalizeUserRole(user.role),
+  }) ? user.id : null;
+}
+
+async function persistReport(
+  userId: number,
+  data: { name: string; content: string },
+  clips: ParsedClip[],
+  request: Request,
+) {
+  const storagePath = `${storageRoot}/${userId}-${randomUUID()}.csv`;
+  const reportName = data.name.trim();
+
+  try {
+    const report = await db.transaction(async (transaction) => {
+      const [activeUser] = await transaction
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .for("update");
+      if (!activeUser) {
+        throw new Error("The signed-in account is no longer available.");
+      }
+      await mkdir(storageRoot, { recursive: true });
+      await writeFile(storagePath, data.content, "utf8");
+      const [created] = await transaction
+        .insert(reportsTable)
+        .values({
+          userId,
+          name: reportName,
+          storagePath,
+        })
+        .returning();
+      await transaction.insert(clipsTable).values(
+        clips.map((clip) => ({
+          reportId: created.id,
+          clipKey: clip.clipKey,
+          date: clip.date,
+          revision: clip.revision,
+          time: clip.time,
+          originalAir: clip.originalAir,
+          lastAir: clip.lastAir,
+          source: reportName,
+          hosts: clip.hosts,
+          guests: clip.guests,
+          shortSynopsis: clip.shortSynopsis,
+          longSynopsis: clip.longSynopsis,
+          duplicateLongSynopsis: clip.duplicateLongSynopsis ? "true" : "false",
+          sensitiveNotes: clip.sensitiveNotes,
+          dateNotes: clip.dateNotes,
+          flagCount: clip.flagCount,
+        })),
+      );
+      return created;
+    });
+
+    return { report, clipCount: clips.length };
+  } catch (error) {
+    await unlink(storagePath).catch(() => undefined);
+    request.log.error({ err: error }, "Unable to persist report");
+    throw error;
+  }
 }
 
 function clipResponse(clip: typeof clipsTable.$inferSelect) {
@@ -59,6 +158,33 @@ function clipResponse(clip: typeof clipsTable.$inferSelect) {
     flagCount: clip.flagCount,
   };
 }
+
+router.post("/reports/ingest", requireReportIngestToken, async (request, response): Promise<void> => {
+  const parsed = UploadReportBody.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ error: "A report name and CSV file contents are required." });
+    return;
+  }
+
+  const clips = parseReport(parsed.data.content);
+  if (!clips.length) {
+    response.status(400).json({ error: "No clips found. The CSV must include a ClipID column." });
+    return;
+  }
+
+  const userId = await configuredIngestionUserId();
+  if (!userId) {
+    response.status(503).json({
+      error: "Direct report ingestion is unavailable until ADMIN_EMAIL identifies the configured administrator.",
+    });
+    return;
+  }
+
+  const created = await persistReport(userId, parsed.data, clips, request);
+  response.status(201).json(
+    UploadReportResponse.parse(reportResponse(created.report, created.clipCount)),
+  );
+});
 
 router.use(requireUser);
 
@@ -96,59 +222,10 @@ router.post("/reports", requireReportEditor, async (request, response): Promise<
   }
 
   const userId = request.currentUser!.id;
-  const storagePath = `${storageRoot}/${userId}-${randomUUID()}.csv`;
-
-  try {
-    const report = await db.transaction(async (transaction) => {
-      const [activeUser] = await transaction
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(eq(usersTable.id, userId))
-        .for("update");
-      if (!activeUser) {
-        throw new Error("The signed-in account is no longer available.");
-      }
-      await mkdir(storageRoot, { recursive: true });
-      await writeFile(storagePath, parsed.data.content, "utf8");
-      const [created] = await transaction
-        .insert(reportsTable)
-        .values({
-          userId,
-          name: parsed.data.name.trim(),
-          storagePath,
-        })
-        .returning();
-      await transaction.insert(clipsTable).values(
-        clips.map((clip) => ({
-          reportId: created.id,
-          clipKey: clip.clipKey,
-          date: clip.date,
-          revision: clip.revision,
-          time: clip.time,
-          originalAir: clip.originalAir,
-          lastAir: clip.lastAir,
-          source: parsed.data.name.trim(),
-          hosts: clip.hosts,
-          guests: clip.guests,
-          shortSynopsis: clip.shortSynopsis,
-          longSynopsis: clip.longSynopsis,
-          duplicateLongSynopsis: clip.duplicateLongSynopsis ? "true" : "false",
-          sensitiveNotes: clip.sensitiveNotes,
-          dateNotes: clip.dateNotes,
-          flagCount: clip.flagCount,
-        })),
-      );
-      return created;
-    });
-
-    response.status(201).json(
-      UploadReportResponse.parse(reportResponse(report, clips.length)),
-    );
-  } catch (error) {
-    await unlink(storagePath).catch(() => undefined);
-    request.log.error({ err: error }, "Unable to persist uploaded report");
-    throw error;
-  }
+  const created = await persistReport(userId, parsed.data, clips, request);
+  response.status(201).json(
+    UploadReportResponse.parse(reportResponse(created.report, created.clipCount)),
+  );
 });
 
 router.delete("/reports/:reportId", requireReportEditor, async (request, response): Promise<void> => {
