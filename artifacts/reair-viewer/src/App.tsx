@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -18,6 +19,7 @@ import {
   Trash2,
   Upload,
   UserPlus,
+  UserRound,
   Users,
   X,
 } from 'lucide-react';
@@ -47,6 +49,11 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { Toaster } from '@workspace/reair-review-system/components/ui/toaster';
 import { TooltipProvider } from '@workspace/reair-review-system/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@workspace/reair-review-system/components/ui/alert';
+import { Badge } from '@workspace/reair-review-system/components/ui/badge';
+import { Button } from '@workspace/reair-review-system/components/ui/button';
+import { Card, CardContent } from '@workspace/reair-review-system/components/ui/card';
+import { Input } from '@workspace/reair-review-system/components/ui/input';
 
 const queryClient = new QueryClient();
 
@@ -223,121 +230,117 @@ function AuthPage() {
 function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<FilterKey>('all');
-  const [sort, setSort] = useState<SortKey>('new');
-  const [archiveView, setArchiveView] = useState<ArchiveView>('list');
-  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
-  const [calendarMonth, setCalendarMonth] = useState('');
+  const [decisions, setDecisions] = useState<Record<string, string>>({});
+  const [showSynopsis, setShowSynopsis] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
-  const detailRef = useRef<HTMLElement>(null);
   const localQueryClient = useQueryClient();
   const { data: session } = useGetCurrentUser();
-  const { data: reports = [], isLoading: reportsLoading } = useListReports();
+  const { data: reports = [] } = useListReports();
   const { data: clips = [], isLoading: clipsLoading, isError: clipsError, refetch: refetchClips } = useListClips();
   const logout = useLogout();
   const currentRole = session?.user?.role ?? 'viewer';
   const canEditReports = currentRole === 'admin' || currentRole === 'editor';
 
-  const view = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return clips.filter((clip) => {
-      if (normalized && !textForClip(clip).includes(normalized)) return false;
-      if (filter === 'review') return clip.sensitiveNotes.length > 0;
-      if (filter === 'dates') return clip.dateNotes.length > 0;
-      if (filter === 'clear') return clip.flagCount === 0;
-      return true;
-    }).sort((left, right) => {
-      if (sort === 'flags') return right.flagCount - left.flagCount || (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0);
-      if (sort === 'old') return (dateValue(left.date)?.getTime() ?? 0) - (dateValue(right.date)?.getTime() ?? 0);
-      if (sort === 'id') return left.id.localeCompare(right.id);
-      return (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0);
-    });
-  }, [clips, filter, query, sort]);
-
-  useEffect(() => {
-    if (calendarMonth || !view.length) return;
-    const firstDatedClip = view.map((clip) => dateValue(clip.date)).find((value): value is Date => Boolean(value));
-    setCalendarMonth(monthKey(monthStart(firstDatedClip ?? new Date())));
-  }, [calendarMonth, view]);
+  const view = useMemo(() => clips
+    .filter((clip) => textForClip(clip).includes(query.trim().toLowerCase()))
+    .sort((left, right) => (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0)), [clips, query]);
 
   useEffect(() => {
     if (selectedId && view.some((clip) => clip.id === selectedId)) return;
     setSelectedId(view[0]?.id ?? null);
   }, [selectedId, view]);
 
-  const selectClip = (id: string, revealOnMobile = true) => {
-    setSelectedId(id);
-    if (revealOnMobile && window.innerWidth <= 900) {
-      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
-    }
-  };
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes((event.target as HTMLElement)?.tagName);
-      if (typing || !['ArrowDown', 'ArrowUp', 'j', 'k'].includes(event.key) || !view.length) return;
-      event.preventDefault();
-      const currentIndex = view.findIndex((clip) => clip.id === selectedId);
-      const step = event.key === 'ArrowDown' || event.key === 'j' ? 1 : -1;
-      const nextIndex = Math.max(0, Math.min(view.length - 1, currentIndex < 0 ? 0 : currentIndex + step));
-      const next = view[nextIndex];
-      selectClip(next.id, false);
-      requestAnimationFrame(() => {
-        document.querySelector(`[data-clip-id="${CSS.escape(next.id)}"]`)?.scrollIntoView({ block: 'nearest' });
-        if (window.innerWidth <= 900) detailRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-      });
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedId, view]);
-
   const selected = clips.find((clip) => clip.id === selectedId) ?? null;
-  const totalFlags = clips.reduce((total, clip) => total + clip.flagCount, 0);
-  const reviewed = clips.filter((clip) => clip.sensitiveNotes.length > 0).length;
+  const selectedIndex = Math.max(0, clips.findIndex((clip) => clip.id === selectedId));
+  const reviewed = clips.filter((clip) => decisions[clip.id]).length;
   const sourceLabel = reports.length > 1
     ? `${reports.length} reports · ${reports[reports.length - 1]?.name || 'archive'}`
-    : reports[0]?.name || (reportsLoading ? 'Loading report archive…' : 'No report loaded');
-
-  const clearView = () => {
-    setQuery('');
-    setFilter('all');
-    setSort('new');
-    setSelectedId(null);
-    setCollapsedMonths({});
-  };
+    : reports[0]?.name || 'No report loaded';
 
   const signOut = () => logout.mutate(undefined, {
     onSuccess: () => localQueryClient.setQueryData(getGetCurrentUserQueryKey(), { authenticated: false, user: null }),
   });
 
-  return <main className="viewer-shell">
-    <header className="viewer-header">
-      <div className="brand-lockup"><Logo /><span className="source-name" title={sourceLabel}>{sourceLabel}</span></div>
-      <div className="header-stats">
-        {reports.length > 1 && <Stat value={reports.length} label="reports" />}
-        <Stat value={clips.length} label="clips" />
-        <Stat value={reviewed} label="need review" flagged />
-        <Stat value={totalFlags} label="flags" />
-        <Stat value={formatDateSpan(clips)} label="clip dates" wide />
+  const nextClip = () => {
+    if (!selected) return;
+    const pending = clips.findIndex((clip, index) => index > selectedIndex && !decisions[clip.id]);
+    const nextIndex = pending >= 0 ? pending : Math.min(selectedIndex + 1, clips.length - 1);
+    setSelectedId(clips[nextIndex]?.id ?? null);
+    setShowSynopsis(false);
+  };
+
+  const notes = selected ? [...selected.sensitiveNotes, ...selected.dateNotes] : [];
+  const people = selected ? [...selected.hosts, ...selected.guests] : [];
+
+  return <main className="min-h-screen bg-background font-sans text-foreground">
+    <header className="flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
+      <div className="whitespace-nowrap font-serif text-sm font-bold uppercase tracking-[0.16em]">Re<span className="text-primary">·</span>Air / Review Desk</div>
+      <div className="hidden border-l border-sidebar-border pl-4 font-mono text-xs text-sidebar-foreground/70 sm:block" title={sourceLabel}>{sourceLabel}</div>
+      <div className="ml-auto flex items-center gap-2">
+        <Button variant="secondary" size="sm" onClick={() => window.print()}><Printer /> Print sheet</Button>
+        <Button variant="secondary" size="sm" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="hidden sm:inline">{canEditReports ? 'Add report' : 'Reports'}</span></Button>
+        {currentRole === 'admin' && <Button variant="secondary" size="sm" onClick={() => setShowUsers(true)}><Users /><span className="hidden sm:inline">Users</span></Button>}
+        <Button variant="secondary" size="icon" aria-label={`Sign out ${roleLabels[currentRole]}`} onClick={signOut}><UserRound /></Button>
       </div>
-      <span className={`header-role role-badge ${currentRole}`}>{roleLabels[currentRole]}</span>
-      {currentRole === 'admin' && <button className="btn" data-testid="button-manage-users" onClick={() => setShowUsers(true)}><Users /> Users</button>}
-      <button className="btn" data-testid="button-manage-reports" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}{canEditReports ? 'Add report' : 'Reports'}</button>
-      <button className="btn ghost" data-testid="button-clear-view" onClick={clearView} disabled={!clips.length && !query}>Clear</button>
-      <button className="btn ghost header-signout" data-testid="button-sign-out" onClick={signOut}><LogOut /> Sign out</button>
     </header>
 
-    <ViewerToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} archiveView={archiveView} setArchiveView={setArchiveView} count={view.length} total={clips.length} onClear={clearView} />
-
-    <div className="viewer-layout">
-      <nav className={archiveView === 'calendar' ? 'calendar-pane' : 'clip-list'} aria-label={archiveView === 'calendar' ? 'Calendar' : 'Clips'}>
-        {clipsLoading ? <div className="empty-list"><LoaderCircle className="spin" /> Loading clips…</div> : clipsError ? <div className="empty-list"><p>Could not load clips.</p><button className="btn" onClick={() => void refetchClips()}>Retry</button></div> : archiveView === 'calendar' ? <CalendarView clips={view} month={calendarMonth} setMonth={setCalendarMonth} selectedId={selectedId} onSelect={selectClip} /> : <ClipList clips={view} query={query} selectedId={selectedId} onSelect={selectClip} hasClips={clips.length > 0} collapsedMonths={collapsedMonths} setCollapsedMonths={setCollapsedMonths} />}
-      </nav>
-      <section ref={detailRef} className="clip-detail" aria-live="polite">
-        {selected ? <ClipDetail clip={selected} query={query} onSearch={setQuery} /> : <Placeholder hasClips={clips.length > 0} />}
+    {clipsLoading || clipsError || !selected ? <section className="grid min-h-[calc(100vh-4rem)] place-items-center bg-card px-6 text-center">
+      <div className="max-w-lg">
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.18em] text-primary">Archive connection</p>
+        <h1 className="mt-2 font-serif text-3xl font-bold">{clipsLoading ? 'Loading live archive' : clipsError ? 'Archive unavailable' : 'Your archive is empty'}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{clipsLoading ? 'Loading your Re-Air archive…' : clipsError ? 'Your Re-Air archive could not be loaded.' : 'Add a report to begin guided review.'}</p>
+        {clipsError && <Button className="mt-5" onClick={() => void refetchClips()}>Retry archive</Button>}
+        {!clipsLoading && !clipsError && canEditReports && <Button className="mt-5" onClick={() => setShowReports(true)}>Add report</Button>}
+      </div>
+    </section> : <>
+      <section className="grid items-center gap-4 border-b bg-card px-4 py-4 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]">
+        <div><p className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">Guided review · Live archive</p><p className="mt-1 font-serif text-lg font-bold">Resolve each decision before moving on</p></div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${reviewed} of ${clips.length} clips reviewed`} aria-valuemin={0} aria-valuemax={clips.length} aria-valuenow={reviewed}><div className="h-full bg-primary transition-[width]" style={{ width: `${clips.length ? reviewed / clips.length * 100 : 0}%` }} /></div>
+        <div className="font-mono text-xs">{reviewed} / {clips.length} resolved</div>
       </section>
-    </div>
+
+      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_19rem]">
+        <aside className="bg-sidebar p-4 text-sidebar-foreground">
+          <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
+          <div className="mt-3 flex gap-2"><Input aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
+          <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
+            <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); setShowSynopsis(false); }}>
+              <span className="min-w-0"><span className="block font-mono text-xs">{clip.id}</span><span className="mt-1 block truncate text-xs opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1.5 block font-mono text-[0.65rem] opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
+            </Button>)}</div>
+          </div>
+        </aside>
+
+        <section className="min-w-0 border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
+          <div className="flex flex-wrap items-center justify-between gap-3"><span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span><Button variant="ghost" size="sm" onClick={nextClip}>Skip to next <ChevronRight /></Button></div>
+          <h1 className="mt-3 font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{selected.id}</h1>
+          <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
+
+          {notes.length ? <>
+            <Alert variant="destructive" className="mt-7"><Flag /><AlertTitle>Could this material mislead a listener if aired now?</AlertTitle><AlertDescription>Review the sensitive and date notes below, then record an editorial disposition.</AlertDescription></Alert>
+            <p className="mt-6 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">Archive notes requiring a decision</p>
+            <div className="mt-3 grid gap-3">{notes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-3 sm:grid-cols-[5rem_1fr]"><Badge variant="destructive">{note.tc || '—'}</Badge><p className="text-sm leading-6">{note.text}</p></CardContent></Card>)}</div>
+          </> : <Alert className="mt-7"><Radio /><AlertTitle>No sensitive or date notes were recorded.</AlertTitle><AlertDescription>Check the supporting history, then clear this clip for the next air window.</AlertDescription></Alert>}
+
+          <section className="mt-6 bg-secondary p-5 text-secondary-foreground">
+            <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
+            <div className="mt-4 flex flex-wrap gap-2">{['Needs edit', 'Hold for context', 'Clear for re-air'].map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => setDecisions((current) => ({ ...current, [selected.id]: option }))}>{option}</Button>)}</div>
+            {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Recorded locally as “{decisions[selected.id]}”. No archive data was changed.</p>}
+          </section>
+        </section>
+
+        <aside className="bg-muted p-5 lg:col-span-2 xl:col-span-1">
+          <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
+          <dl className="mt-3 divide-y divide-border border-y border-border">
+            {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded'], ['Date notes', selected.dateNotes.length ? selected.dateNotes.map((note) => `${note.tc ? `${note.tc} · ` : ''}${note.text}`).join(' · ') : 'None recorded'], ['Source', selected.source]].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
+          </dl>
+          <div className="mt-6"><Button variant="ghost" className="w-full justify-between" onClick={() => setShowSynopsis((value) => !value)} aria-expanded={showSynopsis}>Full synopsis <ChevronDown className={showSynopsis ? 'rotate-180' : undefined} /></Button>{showSynopsis && <p className="pt-4 text-sm leading-6 text-muted-foreground">{selected.longSynopsis || 'No full synopsis was provided.'}</p>}</div>
+          <div className="mt-5 h-px bg-border" />
+          <div className="relative mt-5 h-12 border-b-2 border-accent">{notes.slice(0, 8).map((_, index) => <i key={index} className="absolute bottom-[-0.375rem] h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-muted" style={{ left: `${((index + 1) / (Math.min(notes.length, 8) + 1)) * 100}%` }} />)}</div>
+          <div className="mt-2 flex justify-between font-mono text-[0.65rem] text-muted-foreground"><span>00:00</span><span>End</span></div>
+        </aside>
+      </div>
+    </>}
 
     {showReports && <ReportManager reports={reports} canEdit={canEditReports} onClose={() => setShowReports(false)} />}
     {showUsers && currentRole === 'admin' && session?.user && <UserManager currentUserId={session.user.id} onClose={() => setShowUsers(false)} />}
