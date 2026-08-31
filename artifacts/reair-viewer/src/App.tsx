@@ -280,6 +280,7 @@ function AuthPage() {
 function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [mobileDetailTab, setMobileDetailTab] = useState<'overview' | 'dated'>('overview');
   const [query, setQuery] = useState('');
   const [decisions, setDecisions] = useState<Record<string, Disposition | undefined>>({});
   const [episodeDraft, setEpisodeDraft] = useState('');
@@ -590,7 +591,7 @@ function Workspace() {
             </div>
           </div>
            <div className="queue-results mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
-           <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className={`queue-clip h-auto w-full justify-start whitespace-normal text-left ${queueDispositionClass(decisions[clip.id])}`} data-testid={`button-open-clip-${clip.id}`} data-disposition={decisions[clip.id]} aria-label={`Open clip ${clip.id}`} onClick={() => { setSelectedId(clip.id); setMobileDetailOpen(true); }}>
+           <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className={`queue-clip h-auto w-full justify-start whitespace-normal text-left ${queueDispositionClass(decisions[clip.id])}`} data-testid={`button-open-clip-${clip.id}`} data-disposition={decisions[clip.id]} aria-label={`Open clip ${clip.id}`} onClick={() => { setSelectedId(clip.id); setMobileDetailTab('overview'); setMobileDetailOpen(true); }}>
                 <span className="queue-clip-content min-w-0 wrap-text">
                   <span className="queue-clip-heading"><span className="queue-clip-id break-words font-mono">{clip.id}</span>{clip.revision && <span className="revision">{clip.revision}</span>}<ChevronRight className="queue-clip-arrow" /></span>
                   <span className="queue-clip-airdate"><Clock3 /><span><small>Original airdate</small>{formatDate(clip.originalAir)}</span></span>
@@ -602,7 +603,97 @@ function Workspace() {
         </aside>
 
          <section className="workspace-detail min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
-            <Button data-testid="button-mobile-back-to-clips" className="mobile-back-to-clips" variant="ghost" size="sm" onClick={() => setMobileDetailOpen(false)}><ChevronLeft /> All clips</Button>
+           <div className="mobile-detail-view">
+             <Button data-testid="button-mobile-back-to-clips" className="mobile-back-to-clips" variant="ghost" size="sm" onClick={() => setMobileDetailOpen(false)}><ChevronLeft /> All clips</Button>
+             <div className="mobile-detail-heading">
+               <div className="mobile-detail-title">
+                 <p className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</p>
+                 <h1>{selected.id}</h1>
+                 <p>{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
+               </div>
+               <div className={`verdict ${selected.sensitiveNotes.length ? 'review' : 'clear'}`}><i />{selected.sensitiveNotes.length ? `Needs review — ${selected.sensitiveNotes.length} item${selected.sensitiveNotes.length > 1 ? 's' : ''}` : 'No date-sensitive items flagged'}</div>
+             </div>
+             <section className="mobile-context-summary">
+               <div className="mobile-section-heading"><h2>Supporting context</h2><span>Shared archive record</span></div>
+               <dl>
+                 <div><dt>Host / guests</dt><dd>{people.join(' · ') || 'Not recorded'}</dd></div>
+               </dl>
+             </section>
+             <div className="mobile-detail-tabs" role="tablist" aria-label="Clip information">
+               <button id="tab-mobile-overview" data-testid="tab-mobile-overview" type="button" role="tab" aria-selected={mobileDetailTab === 'overview'} aria-controls="mobile-overview-panel" onClick={() => setMobileDetailTab('overview')}>Overview</button>
+               <button id="tab-mobile-dated-information" data-testid="tab-mobile-dated-information" type="button" role="tab" aria-selected={mobileDetailTab === 'dated'} aria-controls="mobile-dated-panel" onClick={() => setMobileDetailTab('dated')}>Dated information <span>{notes.length}</span></button>
+             </div>
+             {mobileDetailTab === 'overview' ? <div id="mobile-overview-panel" className="mobile-tab-panel" role="tabpanel" aria-labelledby="tab-mobile-overview">
+               <section className="mobile-detail-section">
+                 <div className="mobile-section-heading"><h2>Synopsis</h2></div>
+                 <div className="mobile-synopsis-block">
+                   <div><h3>Short</h3><p>{selected.shortSynopsis || 'Not provided.'}</p></div>
+                   <div><h3>Full</h3><p>{selected.longSynopsis || 'Not provided.'}</p></div>
+                 </div>
+               </section>
+               <section className="mobile-detail-section">
+                 <div className="mobile-section-heading"><h2><StickyNote className="h-4 w-4 text-primary" /> Episode notes</h2><span>{episodeDraft.length} / 10,000</span></div>
+                 <p className="mobile-help-text">Shared handoff guidance for the editor preparing this clip.</p>
+                 <Textarea
+                   className="handoff-textarea mt-3"
+                   aria-label="Episode handoff notes"
+                   maxLength={10000}
+                   value={episodeDraft}
+                   onChange={(event) => { setEpisodeDraft(event.target.value); setEpisodeDirty(true); setReviewSaveError(''); }}
+                   placeholder={reviewLoading ? 'Loading saved notes…' : 'Add context for the editor…'}
+                   disabled={reviewLoading}
+                 />
+                 <div className="mobile-form-actions">
+                   <span className="mobile-help-text">{reviewError ? 'Saved notes are temporarily unavailable.' : 'Notes are shared with every reviewer.'}</span>
+                   <Button data-testid="button-mobile-save-episode-notes" size="sm" onClick={saveEpisodeNotes} disabled={!episodeDirty || saveEpisodeReview.isPending || reviewLoading}>{saveEpisodeReview.isPending ? <LoaderCircle className="spin" /> : <Check />}{saveEpisodeReview.isPending ? 'Saving…' : 'Save notes'}</Button>
+                 </div>
+                 {reviewSaveError && <p className="mt-2 text-xs text-destructive" role="alert">{reviewSaveError}</p>}
+               </section>
+               <section className="mobile-disposition">
+                 <div className="mobile-section-heading"><h2>Editorial disposition</h2></div>
+                 <div className="mobile-disposition-options">{dispositionOptions.map((option) => <Button data-testid={`button-mobile-disposition-${option.toLowerCase().replaceAll(' ', '-')}`} key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => saveDisposition(option)} disabled={reviewLoading || saveEpisodeReview.isPending}>{option}</Button>)}</div>
+                 {decisions[selected.id] && <p className="mobile-help-text">Saved for every reviewer as “{decisions[selected.id]}”.</p>}
+               </section>
+             </div> : <div id="mobile-dated-panel" className="mobile-tab-panel" role="tabpanel" aria-labelledby="tab-mobile-dated-information">
+               <section className="mobile-detail-section">
+                 <div className="mobile-section-heading"><h2>Air dates</h2></div>
+                 <dl className="mobile-airdates">
+                   <div><dt>Clip date</dt><dd>{selected.date ? formatDate(selected.date) : 'Not listed'}</dd></div>
+                   <div><dt>Original airdate</dt><dd>{formatDate(selected.originalAir)}</dd></div>
+                   <div><dt>Last aired</dt><dd>{formatDate(selected.lastAir)}</dd></div>
+                 </dl>
+               </section>
+               <section className="mobile-detail-section">
+                 <div className="mobile-section-heading"><h2>Material timeline</h2><span>{timelineNotes.length} timecoded</span></div>
+                 <div className="mobile-material-timeline">
+                   {timelineNotes.length ? <div className="relative mt-5 h-12 border-b-2 border-accent">
+                     {timelineNotes.map((note, index) => {
+                       const targetKind = note.kind === 'timed' ? 'amber' : 'cyan';
+                       const targetId = noteDomId(targetKind, note.index);
+                       return <button key={`${note.kind}-${note.tc}-${note.text}-${index}`} type="button" className="absolute bottom-[-0.375rem] z-10 -translate-x-1/2 rounded-full p-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ left: timelinePosition(note.secs ?? 0) }} onClick={() => document.getElementById(targetId)?.scrollIntoView({ block: 'center', behavior: 'smooth' })} title={`${note.tc} — ${note.text}`} aria-label={`${note.tc}: ${note.text}`}><i className={`block h-3 w-3 rounded-full ring-4 ring-card ${note.kind === 'timed' ? 'bg-primary' : 'bg-accent'}`} /></button>;
+                     })}
+                   </div> : <p className="mobile-help-text">No timecoded flags on this clip.</p>}
+                   <div className="mobile-timeline-scale"><span>00:00</span><span>{timelineNotes.length ? `through ${formatTimelineTime(timelineSpan)}` : 'No timecodes recorded'}</span><span>End</span></div>
+                 </div>
+               </section>
+               <section className="mobile-detail-section">
+                 <div className="mobile-section-heading"><h2>Timed material</h2><span>{timedNotes.length}</span></div>
+                 {timedNotes.length ? <div className="mobile-review-list">{timedNotes.map((note, index) => {
+                   const kind: ReviewNoteKind = 'timed';
+                   const noteKey = reviewNoteKey(kind, note);
+                   return <ReviewNoteCard key={`${noteKey}-${index}`} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
+                 })}</div> : <p className="mobile-help-text">No timed notes were recorded for this clip.</p>}
+               </section>
+               <section className="mobile-detail-section">
+                 <div className="mobile-section-heading"><h2>Date notes</h2><span>{dateNotes.length}</span></div>
+                 {dateNotes.length ? <div className="mobile-review-list">{dateNotes.map((note, index) => {
+                   const kind: ReviewNoteKind = 'date';
+                   const noteKey = reviewNoteKey(kind, note);
+                   return <ReviewNoteCard key={`${noteKey}-${index}`} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
+                 })}</div> : <p className="mobile-help-text">No date notes were recorded for this clip.</p>}
+               </section>
+             </div>}
+           </div>
            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
              <span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span>
              <div className="flex flex-wrap items-center gap-2">
