@@ -64,6 +64,23 @@ export const LogoutResponse = zod.void()
 
 
 /**
+ * @summary Change the current user's password
+ */
+export const changeMyPasswordBodyCurrentPasswordMin = 8;
+
+export const changeMyPasswordBodyNewPasswordMin = 8;
+
+
+
+export const ChangeMyPasswordBody = zod.object({
+  "currentPassword": zod.string().min(changeMyPasswordBodyCurrentPasswordMin),
+  "newPassword": zod.string().min(changeMyPasswordBodyNewPasswordMin)
+})
+
+export const ChangeMyPasswordResponse = zod.void()
+
+
+/**
  * @summary List users for the administrator
  */
 export const ListUsersResponseItem = zod.object({

@@ -72,6 +72,26 @@ paths:
       responses:
         "204":
           description: Signed out
+  /auth/me/password:
+    post:
+      operationId: changeMyPassword
+      tags: [auth]
+      summary: Change the current user's password
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          description: Invalid password or incorrect current password
+        "401":
+          description: Authentication required
   /auth/users:
     get:
       operationId: listUsers
@@ -450,6 +470,16 @@ components:
           type: string
           minLength: 8
       required: [email, password]
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 8
+        newPassword:
+          type: string
+          minLength: 8
+      required: [currentPassword, newPassword]
     CreateUserRequest:
       allOf:
         - $ref: "#/components/schemas/AuthCredentials"

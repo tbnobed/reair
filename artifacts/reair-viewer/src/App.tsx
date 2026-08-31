@@ -12,6 +12,7 @@ import {
   FilePlus2,
   Flag,
   FolderOpen,
+  KeyRound,
   LoaderCircle,
   LogOut,
   MessageSquareText,
@@ -33,6 +34,7 @@ import {
   getListClipsQueryKey,
   getListReportsQueryKey,
   useCreateUser,
+  useChangeMyPassword,
   useDeleteClip,
   useDeleteReport,
   useDeleteUser,
@@ -290,6 +292,7 @@ function Workspace() {
   const [sort, setSort] = useState<SortKey>('new');
   const [showReports, setShowReports] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const localQueryClient = useQueryClient();
   const { data: session } = useGetCurrentUser();
   const { data: reports = [] } = useListReports();
@@ -510,10 +513,18 @@ function Workspace() {
     <header className="flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
       <Logo />
       <div className="ml-auto flex items-center gap-2">
+        <div className="header-account" title={session?.user?.email ?? 'Signed-in account'}>
+          <UserRound className="header-account-icon" />
+          <div className="header-account-copy">
+            <strong>{session?.user?.email ?? 'Signed-in account'}</strong>
+            <span>{roleLabels[currentRole]}</span>
+          </div>
+        </div>
         <Button variant="secondary" size="sm" onClick={() => window.print()}><Printer /> Print sheet</Button>
         <Button variant="secondary" size="sm" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="hidden sm:inline">{canEditReports ? 'Add data' : 'Data'}</span></Button>
         {currentRole === 'admin' && <Button variant="secondary" size="sm" onClick={() => setShowUsers(true)}><Users /><span className="hidden sm:inline">Users</span></Button>}
-        <Button variant="secondary" size="icon" aria-label={`Sign out ${roleLabels[currentRole]}`} onClick={signOut}><UserRound /></Button>
+        <Button variant="secondary" size="sm" onClick={() => setShowPassword(true)}><KeyRound /><span className="hidden sm:inline">Change password</span></Button>
+        <Button variant="secondary" size="icon" aria-label={`Sign out ${session?.user?.email ?? roleLabels[currentRole]}`} onClick={signOut}><LogOut /></Button>
       </div>
     </header>
 
@@ -709,6 +720,7 @@ function Workspace() {
 
     {showReports && <ReportManager reports={reports} canEdit={canEditReports} onClose={() => setShowReports(false)} />}
     {showUsers && currentRole === 'admin' && session?.user && <UserManager currentUserId={session.user.id} onClose={() => setShowUsers(false)} />}
+    {showPassword && <ChangePasswordDialog onClose={() => setShowPassword(false)} />}
   </main>;
 }
 
@@ -1057,6 +1069,62 @@ function mutationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
   const message = error.message.replace(/^HTTP \d+(?: [^:]*)?:\s*/, '').trim();
   return message || fallback;
+}
+
+function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
+  const changePassword = useChangeMyPassword();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+    if (currentPassword.length < 8 || newPassword.length < 8) {
+      setError('Passwords must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('The new passwords do not match.');
+      return;
+    }
+
+    changePassword.mutate({
+      data: { currentPassword, newPassword },
+    }, {
+      onSuccess: () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setSuccess('Your password has been updated.');
+      },
+      onError: (nextError) => setError(mutationErrorMessage(nextError, 'The password could not be updated.')),
+    });
+  };
+
+  return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title">
+    <div className="reports-modal password-modal">
+      <div className="modal-header">
+        <div>
+          <p className="eyebrow">Account security</p>
+          <h2 id="password-dialog-title">Change password</h2>
+        </div>
+        <button className="icon-button" aria-label="Close change password" onClick={onClose}><X /></button>
+      </div>
+      <form className="upload-panel password-form" onSubmit={submit} noValidate>
+        <p className="password-help">Choose a new password for your Re·Air / Praise account.</p>
+        <label>Current password<input data-testid="input-current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Enter current password" /></label>
+        <label>New password<input data-testid="input-new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 8 characters" /></label>
+        <label>Confirm new password<input data-testid="input-confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repeat new password" /></label>
+        {error && <div className="inline-error" data-testid="status-password-error"><AlertCircle />{error}</div>}
+        {success && <div className="password-success" data-testid="status-password-success"><CheckCircle2 />{success}</div>}
+        <div className="modal-actions"><button className="btn ghost" type="button" onClick={onClose}>Cancel</button><button data-testid="button-change-password" className="btn primary" type="submit" disabled={changePassword.isPending}>{changePassword.isPending ? <LoaderCircle className="spin" /> : <KeyRound />}{changePassword.isPending ? 'Updating…' : 'Update password'}</button></div>
+      </form>
+    </div>
+  </div>;
 }
 
 function UserManager({ currentUserId, onClose }: { currentUserId: number; onClose: () => void }) {

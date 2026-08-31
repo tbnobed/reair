@@ -114,6 +114,20 @@ mark { background: rgba(53, 185, 214, .24); color: #eaf6fa; border-radius: 2px; 
 .icon-button svg { width: 16px; height: 16px; }
 .icon-button:hover { border-color: var(--rule); background: var(--panel-2); color: var(--ink); }
 .header-signout { display: inline-flex; }
+.header-account {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  color: hsl(var(--sidebar-foreground));
+}
+.header-account-icon { width: 16px; height: 16px; flex: none; color: hsl(var(--sidebar-foreground) / .7); }
+.header-account-copy { min-width: 0; line-height: 1.15; }
+.header-account-copy strong,
+.header-account-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-account-copy strong { max-width: 220px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+.header-account-copy span { margin-top: 3px; color: hsl(var(--sidebar-foreground) / .65); font-family: var(--font-serif); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
 
 .viewer-toolbar {
   height: 52px;
@@ -450,6 +464,11 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; backg
 .user-row-actions select { min-width: 140px; padding: 7px 30px 7px 10px; border: 1px solid var(--rule); border-radius: 5px; outline: none; background: var(--rack); color: var(--ink-dim); font-family: var(--cond); font-size: 11px; text-transform: uppercase; }
 .user-row-actions select:focus { border-color: var(--cyan-dim); }
 .current-user-label { flex: none; color: var(--ink-faint); font-family: var(--mono); font-size: 10px; text-transform: uppercase; }
+.password-modal { width: min(100%, 520px); }
+.password-form { gap: 15px; }
+.password-help { margin: 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.5; }
+.password-success { display: flex; align-items: flex-start; gap: 8px; padding: 9px 11px; border: 1px solid hsl(var(--chart-3) / .35); border-radius: var(--radius-sm); background: hsl(var(--chart-3) / .1); color: hsl(var(--chart-3)); font-size: 13px; }
+.password-success svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
 
 @media (min-width: 1200px) { .detail-pane { padding-right: 48px; padding-left: 48px; } }
 @media (min-width: 1800px) { .viewer-layout { grid-template-columns: 420px minmax(0, 1fr); } }
@@ -488,6 +507,8 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; backg
   .user-row-actions { align-items: flex-end; flex-direction: column; }
   .user-row-actions select { min-width: 126px; }
   .header-role { order: 2; }
+  .header-account-copy strong { max-width: 145px; }
+  .header-account-copy span { display: none; }
 }
 
 /* Re-Air Review System application mapping */

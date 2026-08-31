@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import {
   CreateUserBody,
+  ChangeMyPasswordBody,
   GetCurrentUserResponse,
   LoginBody,
   LoginResponse,
@@ -79,6 +80,31 @@ router.post("/auth/login", async (request, response): Promise<void> => {
 
 router.post("/auth/logout", async (request, response): Promise<void> => {
   await destroySession(request, response);
+  response.sendStatus(204);
+});
+
+router.post("/auth/me/password", requireUser, async (request, response): Promise<void> => {
+  const parsed = ChangeMyPasswordBody.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ error: "Enter your current password and a new password of at least 8 characters." });
+    return;
+  }
+
+  const [user] = await db
+    .select({ passwordHash: usersTable.passwordHash })
+    .from(usersTable)
+    .where(eq(usersTable.id, request.currentUser!.id))
+    .limit(1);
+
+  if (!user || !(await verifyPassword(parsed.data.currentPassword, user.passwordHash))) {
+    response.status(400).json({ error: "Current password is incorrect." });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ passwordHash: await hashPassword(parsed.data.newPassword) })
+    .where(eq(usersTable.id, request.currentUser!.id));
   response.sendStatus(204);
 });
 

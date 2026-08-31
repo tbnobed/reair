@@ -2,3 +2,4 @@
 - [Re-Air role model](reair-role-model.md) — roles govern a shared archive; permissions are server-enforced and refreshed in active clients.
 - [AI report ingestion ownership](ai-report-ingestion.md) — machine posts use a bearer token and are attributed to the configured administrator; browser uploads stay session-authenticated.
 - [Editor handoff model](editor-handoff-model.md) — review notes and per-flag decisions belong to the shared merged clip identity.
+- [Self-service password changes](self-service-password.md) — users verify their current password before replacing only their own hash; the active session remains valid.

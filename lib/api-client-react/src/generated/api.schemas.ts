@@ -33,6 +33,13 @@ export interface AuthCredentials {
   password: string;
 }
 
+export interface ChangePasswordRequest {
+  /** @minLength 8 */
+  currentPassword: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
 export type CreateUserRequest = AuthCredentials & {
   role: UserRole;
 };

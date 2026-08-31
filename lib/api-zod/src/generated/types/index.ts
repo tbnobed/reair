@@ -8,6 +8,7 @@
 
 export * from './authCredentials';
 export * from './authSession';
+export * from './changePasswordRequest';
 export * from './clip';
 export * from './clipReview';
 export * from './clipReviewAnnotationUpdate';
