@@ -33,6 +33,7 @@ import {
   getListClipsQueryKey,
   getListReportsQueryKey,
   useCreateUser,
+  useDeleteClip,
   useDeleteReport,
   useDeleteUser,
   useGetCurrentUser,
@@ -281,6 +282,7 @@ function Workspace() {
   const [episodeDraft, setEpisodeDraft] = useState('');
   const [episodeDirty, setEpisodeDirty] = useState(false);
   const [reviewSaveError, setReviewSaveError] = useState('');
+  const [clipDeleteError, setClipDeleteError] = useState('');
   const [editingAnnotation, setEditingAnnotation] = useState<{ kind: ReviewNoteKind; noteKey: string } | null>(null);
   const [annotationDraft, setAnnotationDraft] = useState('');
   const [annotationError, setAnnotationError] = useState('');
@@ -302,6 +304,7 @@ function Workspace() {
     },
   });
   const logout = useLogout();
+  const removeClip = useDeleteClip();
   const saveEpisodeReview = useUpdateClipReview();
   const saveAnnotation = useUpdateClipReviewAnnotation();
   const currentRole = session?.user?.role ?? 'viewer';
@@ -328,6 +331,7 @@ function Workspace() {
     setEpisodeDraft('');
     setEpisodeDirty(false);
     setReviewSaveError('');
+    setClipDeleteError('');
     setEditingAnnotation(null);
     setAnnotationDraft('');
     setAnnotationError('');
@@ -365,6 +369,31 @@ function Workspace() {
     const pending = view.findIndex((clip, index) => index > selectedIndex && !decisions[clip.id]);
     const nextIndex = pending >= 0 ? pending : Math.min(selectedIndex + 1, view.length - 1);
     setSelectedId(view[nextIndex]?.id ?? null);
+  };
+
+  const deleteSelectedClip = () => {
+    if (!selected) return;
+    const clipId = selected.id;
+    if (!window.confirm(`Delete ${clipId} from the shared archive? This permanently removes the clip and its review notes.`)) return;
+
+    const currentIndex = view.findIndex((clip) => clip.id === clipId);
+    const nextSelection = view[currentIndex + 1]?.id ?? view[currentIndex - 1]?.id ?? null;
+    setClipDeleteError('');
+    removeClip.mutate({ clipId }, {
+      onSuccess: () => {
+        setSelectedId(nextSelection);
+        setDecisions((current) => {
+          const next = { ...current };
+          delete next[clipId];
+          return next;
+        });
+        localQueryClient.removeQueries({ queryKey: getGetClipReviewQueryKey(clipId) });
+        localQueryClient.setQueryData<Clip[]>(getListClipsQueryKey(), (current) => current?.filter((clip) => clip.id !== clipId));
+        void localQueryClient.invalidateQueries({ queryKey: getListClipsQueryKey() });
+        void localQueryClient.invalidateQueries({ queryKey: getListReportsQueryKey() });
+      },
+      onError: (error) => setClipDeleteError(mutationErrorMessage(error, 'This clip could not be deleted. Try again.')),
+    });
   };
 
   const notes = selected ? [...selected.sensitiveNotes, ...selected.dateNotes] : [];
@@ -549,7 +578,14 @@ function Workspace() {
         </aside>
 
          <section className="min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
-           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span><Button variant="ghost" size="sm" onClick={nextClip}>Skip to next <ChevronRight /></Button></div>
+           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+             <span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span>
+             <div className="flex flex-wrap items-center gap-2">
+               {canEditReports && <Button variant="destructive" size="sm" onClick={deleteSelectedClip} disabled={removeClip.isPending}><Trash2 />{removeClip.isPending ? 'Deleting…' : 'Delete clip'}</Button>}
+               <Button variant="ghost" size="sm" onClick={nextClip}>Skip to next <ChevronRight /></Button>
+             </div>
+           </div>
+           {clipDeleteError && <p className="mt-3 text-xs text-destructive" role="alert">{clipDeleteError}</p>}
            <h1 className="mt-3 break-words font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{selected.id}</h1>
            <p className="mt-2 max-w-none wrap-text break-words text-base leading-7 text-muted-foreground">{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
 

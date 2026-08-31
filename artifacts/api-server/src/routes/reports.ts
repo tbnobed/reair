@@ -12,6 +12,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import {
+  DeleteClipParams,
   DeleteReportParams,
   GetClipReviewParams,
   GetClipReviewResponse,
@@ -381,6 +382,41 @@ router.get("/clips", async (_request, response): Promise<void> => {
   response.json(ListClipsResponse.parse(
     mergeResponseClips(rows.map((row) => clipResponse(row.clip, row.disposition))),
   ));
+});
+
+router.delete("/clips/:clipId", requireReportEditor, async (request, response): Promise<void> => {
+  const params = DeleteClipParams.safeParse(request.params);
+  if (!params.success) {
+    response.status(400).json({ error: "Invalid clip id." });
+    return;
+  }
+
+  const deleted = await db.transaction(async (transaction) => {
+    const clipRows = await transaction
+      .select({ id: clipsTable.id })
+      .from(clipsTable)
+      .where(eq(clipsTable.clipKey, params.data.clipId))
+      .for("update");
+    if (!clipRows.length) return false;
+
+    await transaction
+      .delete(clipReviewAnnotationsTable)
+      .where(eq(clipReviewAnnotationsTable.clipKey, params.data.clipId));
+    await transaction
+      .delete(clipReviewsTable)
+      .where(eq(clipReviewsTable.clipKey, params.data.clipId));
+    await transaction
+      .delete(clipsTable)
+      .where(eq(clipsTable.clipKey, params.data.clipId));
+    return true;
+  });
+
+  if (!deleted) {
+    response.status(404).json({ error: "Clip not found." });
+    return;
+  }
+
+  response.sendStatus(204);
 });
 
 router.get("/clips/:clipId/review", async (request, response): Promise<void> => {

@@ -282,6 +282,26 @@ paths:
                   $ref: "#/components/schemas/Clip"
         "401":
           description: Authentication required
+  /clips/{clipId}:
+    delete:
+      operationId: deleteClip
+      tags: [clips]
+      summary: Delete a clip from the shared workspace archive
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ClipId"
+      responses:
+        "204":
+          description: Clip deleted
+        "400":
+          description: Invalid clip id
+        "401":
+          description: Authentication required
+        "403":
+          description: Editor or administrator access required
+        "404":
+          description: Clip not found
   /clips/{clipId}/review:
     get:
       operationId: getClipReview

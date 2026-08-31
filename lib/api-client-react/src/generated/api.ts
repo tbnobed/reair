@@ -1019,6 +1019,77 @@ export function useListClips<TData = Awaited<ReturnType<typeof listClips>>, TErr
 
 
 
+export const getDeleteClipUrl = (clipId: string,) => {
+
+
+
+
+  return `/api/clips/${clipId}`
+}
+
+/**
+ * @summary Delete a clip from the shared workspace archive
+ */
+export const deleteClip = async (clipId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteClipUrl(clipId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteClipMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteClip>>, TError,{clipId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteClip>>, TError,{clipId: string}, TContext> => {
+
+const mutationKey = ['deleteClip'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteClip>>, {clipId: string}> = (props) => {
+          const {clipId} = props ?? {};
+
+          return  deleteClip(clipId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteClipMutationResult = NonNullable<Awaited<ReturnType<typeof deleteClip>>>
+
+    export type DeleteClipMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a clip from the shared workspace archive
+ */
+export const useDeleteClip = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteClip>>, TError,{clipId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteClip>>,
+        TError,
+        {clipId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteClipMutationOptions(options));
+    }
+
 export const getGetClipReviewUrl = (clipId: string,) => {
 
 

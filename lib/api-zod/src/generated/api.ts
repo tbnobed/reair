@@ -228,6 +228,16 @@ export const ListClipsResponse = zod.array(ListClipsResponseItem)
 
 
 /**
+ * @summary Delete a clip from the shared workspace archive
+ */
+export const DeleteClipParams = zod.object({
+  "clipId": zod.coerce.string()
+})
+
+export const DeleteClipResponse = zod.void()
+
+
+/**
  * @summary Get editor handoff notes for a clip
  */
 export const GetClipReviewParams = zod.object({
