@@ -1,0 +1,43 @@
+import { useMemo, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, FileText, Flag, HelpCircle, Printer, Search, UserRound } from 'lucide-react';
+import './_group.css';
+import './GuidedReview.css';
+
+type Clip = { id: string; air: string; people: string; short: string; full: string; flags: { tc: string; text: string }[]; dates: string[]; last: string; source: string };
+
+const clips: Clip[] = [
+  { id:'RA-2025-04-18-01', air:'October 11, 2024', people:'Mara Li · Dr. Elena Ruiz · Caleb Foster', short:'A conversation about coastal resilience, municipal planning, and the communities adapting to a changing shoreline.', full:'Mara Li speaks with urban ecologist Dr. Elena Ruiz and harbor planner Caleb Foster about how coastal cities are preparing for stronger storm surges. The guests compare seawalls with restored wetlands, discuss the difficult economics of relocation, and explain why neighborhood-level planning must begin years before construction.', flags:[{tc:'04:18',text:'Guest says the pilot project will open “this September.” Update or remove before rebroadcast.'},{tc:'22:41',text:'Host refers to the mayoral vote as happening “next week.” This is no longer current.'}], dates:['October 2012 · Hurricane Sandy','2024–2027 · Project funding period'], last:'January 3, 2025', source:'Spring 2025 Re-Air Review.csv' },
+  { id:'RA-2025-03-26-02', air:'March 2, 2024', people:'Owen Price · Fatima Bell', short:'An oral historian on preserving the stories and working life of a changing neighborhood.', full:'Owen Price joins oral historian Fatima Bell on a walking tour through the East Market district. Bell shares recordings from shopkeepers and residents while describing the practical work of building a public archive.', flags:[{tc:'02:09',text:'Introduction calls the exhibition “currently on view.” Exhibition has closed.'}], dates:['1978 · Neighborhood association formed','2019 · Archive began collecting interviews'], last:'November 18, 2024', source:'Spring 2025 Re-Air Review.csv' },
+  { id:'RA-2025-02-21-04', air:'February 21, 2024', people:'Mara Li · Imani Woods', short:'Chef Imani Woods traces a family recipe through migration, adaptation, and three generations of home kitchens.', full:'Woods prepares a celebratory rice dish while explaining how ingredients and techniques changed as her family moved between regions. The conversation considers recipe cards as historical records.', flags:[{tc:'27:16',text:'Closing promotes a restaurant residency ending this month.'}], dates:['1966 · Family arrived in Baltimore'], last:'December 20, 2024', source:'Winter Archive Audit.csv' },
+  { id:'RA-2025-04-07-03', air:'June 22, 2023', people:'Mara Li · Nikhil Shah', short:'Composer Nikhil Shah demonstrates how field recordings become the rhythmic foundation of a new work.', full:'An in-studio performance and interview tracing sounds collected in train stations, markets, and workshops into a chamber composition.', flags:[], dates:['June 30, 2023 · Album release date'], last:'August 15, 2024', source:'Spring 2025 Re-Air Review.csv' },
+];
+
+export function GuidedReview() {
+  const [selected, setSelected] = useState(0);
+  const [query, setQuery] = useState('');
+  const [decision, setDecision] = useState<Record<string, string>>({});
+  const [showSynopsis, setShowSynopsis] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const visible = useMemo(() => clips.filter(c => `${c.id} ${c.people} ${c.short}`.toLowerCase().includes(query.toLowerCase())), [query]);
+  const clip = clips[selected];
+  const reviewed = Object.keys(decision).length;
+  const setVerdict = (value: string) => setDecision(old => ({ ...old, [clip.id]: value }));
+  const next = () => { const pending = clips.findIndex((c, i) => i > selected && !decision[c.id]); setSelected(pending >= 0 ? pending : Math.min(selected + 1, clips.length - 1)); setShowSynopsis(false); };
+  return <main className="reair-guided">
+    <header className="guided-topbar">
+      <div className="guided-wordmark">Re<b>·</b>Air / Review Desk</div><div className="guided-context">Shared archive · Spring 2025 cycle · 2 reports</div>
+      <div className="guided-top-actions"><button onClick={() => window.print()}><Printer /> Print sheet</button><div className="guided-utility"><button className="guided-icon" aria-label="User menu" onClick={() => setShowMenu(v => !v)}><UserRound /></button>{showMenu && <div className="guided-menu"><button onClick={() => setShowMenu(false)}>Reviewer: A. Morgan</button><button onClick={() => setShowMenu(false)}>Archive settings</button></div>}</div></div>
+    </header>
+    <section className="guided-progress"><div className="progress-copy"><small>Guided review</small><strong>Resolve each decision before moving on</strong></div><div className="progress-meter" aria-label={`${reviewed} of ${clips.length} clips reviewed`}><span style={{ width:`${reviewed / clips.length * 100}%` }} /></div><div className="progress-count">{reviewed} / {clips.length} resolved</div></section>
+    <div className="guided-shell">
+      <aside className="guided-queue"><p className="queue-caption">Review queue · date-sensitive</p><div className="queue-filter"><input aria-label="Search review queue" value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a clip or person" /><button aria-label="Search"><Search size={15}/></button></div><div className="queue-list">{visible.map(item => { const i = clips.indexOf(item); return <button key={item.id} onClick={() => { setSelected(i); setShowSynopsis(false); }} className={`queue-card ${selected === i ? 'is-active' : ''} ${decision[item.id] ? 'is-done' : ''}`}><strong>{item.id}</strong><span>{item.people}</span><em>{decision[item.id] ? decision[item.id] : `${item.flags.length} timecoded concern${item.flags.length === 1 ? '' : 's'}`}</em></button>; })}</div></aside>
+      <section className="guided-main">
+        <div className="clip-kicker"><span>Now reviewing · clip {selected + 1} of {clips.length}</span><button onClick={next}>Skip to next <ChevronRight size={14}/></button></div>
+        <h1 className="clip-title">{clip.id}</h1><p className="clip-deck">{clip.short}</p>
+        {clip.flags.length ? <><div className="review-question"><Flag /><div><strong>Could this material mislead a listener if aired now?</strong><span>Review the timecoded language below, then record an editorial disposition.</span></div></div><p className="section-label">Evidence requiring a decision</p><div className="evidence-list">{clip.flags.map(flag => <article className="evidence" key={flag.tc}><time>{flag.tc}</time><p>{flag.text}</p></article>)}</div></> : <div className="review-question"><HelpCircle /><div><strong>No date-sensitive language was detected.</strong><span>Check the supporting history, then clear this clip for the next air window.</span></div></div>}
+        <section className="decision-box"><h2>Editorial disposition</h2><div className="decision-actions">{['Needs edit','Hold for context','Clear for re-air'].map(action => <button className={decision[clip.id] === action ? 'active' : ''} key={action} onClick={() => setVerdict(action)}>{action}</button>)}</div>{decision[clip.id] && <p className="decision-note">Recorded locally as “{decision[clip.id]}”. The queue is updated; no archive data was changed.</p>}</section>
+      </section>
+      <aside className="guided-context-panel"><h2>Supporting context</h2><div className="fact-grid"><div className="fact"><span className="fact-label">Original airdate</span><span className="fact-value">{clip.air}</span></div><div className="fact"><span className="fact-label">Last aired</span><span className="fact-value">{clip.last}</span></div><div className="fact"><span className="fact-label">Host / guests</span><span className="fact-value">{clip.people}</span></div><div className="fact"><span className="fact-label">Dates mentioned</span><span className="fact-value">{clip.dates.join(' · ')}</span></div><div className="fact"><span className="fact-label">Source</span><span className="fact-value">{clip.source}</span></div></div><div className="context-extra"><button className={`context-toggle ${showSynopsis ? 'open' : ''}`} onClick={() => setShowSynopsis(v => !v)}>Full synopsis <ChevronDown /></button><div className={`disclosure ${showSynopsis ? 'open' : ''}`}><p>{clip.full}</p></div><div className="mini-timeline" aria-label="Timecoded flags"><i /><i /></div><div className="timeline-label-guided"><span>00:00</span><span>30:00</span></div></div></aside>
+    </div>
+  </main>;
+}
