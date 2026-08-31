@@ -479,7 +479,7 @@ function Workspace() {
 
   return <main className="min-h-screen bg-background font-sans text-foreground">
     <header className="flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
-      <div className="whitespace-nowrap font-serif text-sm font-bold uppercase tracking-[0.16em]">Re·Air / Praise</div>
+      <Logo />
       <div className="ml-auto flex items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => window.print()}><Printer /> Print sheet</Button>
         <Button variant="secondary" size="sm" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="hidden sm:inline">{canEditReports ? 'Add data' : 'Data'}</span></Button>
