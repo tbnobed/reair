@@ -232,6 +232,7 @@ function Workspace() {
   const [query, setQuery] = useState('');
   const [decisions, setDecisions] = useState<Record<string, string>>({});
   const [dispositionFilter, setDispositionFilter] = useState<DispositionFilter>('all');
+  const [sort, setSort] = useState<SortKey>('new');
   const [showReports, setShowReports] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const localQueryClient = useQueryClient();
@@ -242,10 +243,17 @@ function Workspace() {
   const currentRole = session?.user?.role ?? 'viewer';
   const canEditReports = currentRole === 'admin' || currentRole === 'editor';
 
-  const view = useMemo(() => clips
-    .filter((clip) => textForClip(clip).includes(query.trim().toLowerCase()))
-    .filter((clip) => dispositionFilter === 'all' || decisions[clip.id] === dispositionFilter)
-    .sort((left, right) => (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0)), [clips, query, dispositionFilter, decisions]);
+  const view = useMemo(() => {
+    const filtered = clips
+      .filter((clip) => textForClip(clip).includes(query.trim().toLowerCase()))
+      .filter((clip) => dispositionFilter === 'all' || decisions[clip.id] === dispositionFilter);
+    return filtered.sort((left, right) => {
+      if (sort === 'id') return left.id.localeCompare(right.id);
+      const leftDate = dateValue(left.originalAir || left.date)?.getTime() ?? 0;
+      const rightDate = dateValue(right.originalAir || right.date)?.getTime() ?? 0;
+      return sort === 'old' ? leftDate - rightDate : rightDate - leftDate;
+    });
+  }, [clips, query, dispositionFilter, decisions, sort]);
 
   useEffect(() => {
     if (selectedId && view.some((clip) => clip.id === selectedId)) return;
@@ -304,9 +312,16 @@ function Workspace() {
       <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
         <aside className="bg-sidebar p-4 text-sidebar-foreground">
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
-          <div className="mt-3 flex gap-2"><Input aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
-          <div className="mt-3 border-y border-sidebar-border py-3" aria-label="Sort queue by disposition">
-            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-sidebar-foreground/60">Sort by disposition</p>
+          <div className="mt-3 flex gap-2"><Input data-testid="input-clip-search" aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
+          <div className="mt-3 grid gap-2 border-y border-sidebar-border py-3">
+            <label className="flex items-center justify-between gap-3 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-sidebar-foreground/60" htmlFor="queue-sort">Sort queue
+              <select id="queue-sort" aria-label="Sort queue" value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="h-8 min-w-0 flex-1 border border-sidebar-border bg-sidebar px-2 font-mono text-[0.65rem] uppercase tracking-normal text-sidebar-foreground outline-none focus:border-sidebar-foreground">
+                <option value="new">Newest airdate</option>
+                <option value="old">Oldest airdate</option>
+                <option value="id">Title / clip ID A–Z</option>
+              </select>
+            </label>
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-sidebar-foreground/60">Filter by disposition</p>
             <div className="flex flex-wrap gap-1">
               {(['Needs edit', 'Hold for context', 'Clear for re-air'] as Exclude<DispositionFilter, 'all'>[]).map((option) => (
                 <Button
