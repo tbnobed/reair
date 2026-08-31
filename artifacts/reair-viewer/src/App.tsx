@@ -292,19 +292,7 @@ function Workspace() {
       </div>
     </section> : <>
       <section className="grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress and disposition filters">
-        <div className="flex flex-wrap items-center gap-1">
-          {(['Needs edit', 'Hold for context', 'Clear for re-air'] as Exclude<DispositionFilter, 'all'>[]).map((option) => (
-            <Button
-              key={option}
-              size="sm"
-              variant={dispositionFilter === option ? 'default' : 'outline'}
-              aria-pressed={dispositionFilter === option}
-              onClick={() => setDispositionFilter((current) => current === option ? 'all' : option)}
-            >
-              {option}
-            </Button>
-          ))}
-        </div>
+        <div />
         <div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${reviewed} of ${clips.length} clips reviewed`} aria-valuemin={0} aria-valuemax={clips.length} aria-valuenow={reviewed}>
             <div className="h-full bg-primary transition-[width]" style={{ width: `${clips.length ? reviewed / clips.length * 100 : 0}%` }} />
@@ -317,9 +305,25 @@ function Workspace() {
         <aside className="bg-sidebar p-4 text-sidebar-foreground">
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
           <div className="mt-3 flex gap-2"><Input aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
+          <div className="mt-3 border-y border-sidebar-border py-3" aria-label="Sort queue by disposition">
+            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-sidebar-foreground/60">Sort by disposition</p>
+            <div className="flex flex-wrap gap-1">
+              {(['Needs edit', 'Hold for context', 'Clear for re-air'] as Exclude<DispositionFilter, 'all'>[]).map((option) => (
+                <Button
+                  key={option}
+                  size="sm"
+                  variant={dispositionFilter === option ? 'default' : 'outline'}
+                  aria-pressed={dispositionFilter === option}
+                  onClick={() => setDispositionFilter((current) => current === option ? 'all' : option)}
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
           <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
             <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); }}>
-              <span className="min-w-0"><span className="block font-mono text-xs">{clip.id}</span><span className="mt-1 block truncate text-xs opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1.5 block font-mono text-[0.65rem] opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
+              <span className="min-w-0"><span className="block font-mono text-xs">{clip.id}</span><span className="mt-1 block truncate text-xs opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1 block truncate font-mono text-[0.65rem] opacity-65">Original airdate · {formatDate(clip.originalAir)}</span><span className="mt-1.5 block font-mono text-[0.65rem] opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
             </Button>)}</div>
           </div>
         </aside>
