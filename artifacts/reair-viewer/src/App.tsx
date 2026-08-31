@@ -45,8 +45,8 @@ import {
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from '@workspace/reair-review-system/components/ui/toaster';
+import { TooltipProvider } from '@workspace/reair-review-system/components/ui/tooltip';
 
 const queryClient = new QueryClient();
 

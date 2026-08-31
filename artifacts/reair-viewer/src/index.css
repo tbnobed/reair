@@ -1,5 +1,4 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import '@workspace/reair-review-system/styles.css';
 
 :root {
   --rack: #0e1114;
@@ -487,6 +486,213 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; backg
   .user-row-actions { align-items: flex-end; flex-direction: column; }
   .user-row-actions select { min-width: 126px; }
   .header-role { order: 2; }
+}
+
+/* Re-Air Review System application mapping */
+body,
+.viewer-shell {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+}
+
+.viewer-header {
+  border-bottom: 4px solid hsl(var(--primary));
+  background: hsl(var(--sidebar));
+  color: hsl(var(--sidebar-foreground));
+}
+.viewer-brand-mark { font-family: var(--font-serif); }
+.viewer-brand-mark span,
+.viewer-stat.flagged b { color: hsl(var(--primary)); }
+.source-name,
+.viewer-stat span { color: hsl(var(--sidebar-foreground) / .62); }
+.viewer-stat { border-left-color: hsl(var(--sidebar-border)); }
+.header-role { border-color: hsl(var(--sidebar-border)); }
+
+.btn {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius-sm);
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  font-family: var(--font-serif);
+}
+.btn:hover {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--secondary) / .9);
+  color: hsl(var(--secondary-foreground));
+}
+.btn.primary {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.btn.primary:hover { border-color: hsl(var(--primary)); background: hsl(var(--primary) / .88); }
+.btn.ghost { color: hsl(var(--muted-foreground)); }
+.viewer-header .btn.ghost { color: hsl(var(--sidebar-foreground) / .65); }
+.viewer-header .btn.ghost:hover { background: hsl(var(--sidebar-accent)); color: hsl(var(--sidebar-accent-foreground)); }
+
+.viewer-toolbar {
+  border-bottom-color: hsl(var(--border));
+  background: hsl(var(--card));
+}
+.viewer-search input,
+.viewer-toolbar select,
+.segmented {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius-sm);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.viewer-search > svg,
+.viewer-search input::placeholder,
+.viewer-search kbd,
+.result-count { color: hsl(var(--muted-foreground)); }
+.viewer-search input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 2px hsl(var(--ring) / .14); }
+.segmented button { border-left-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); font-family: var(--font-serif); }
+.segmented button:hover { color: hsl(var(--foreground)); }
+.segmented button[aria-pressed="true"] { background: hsl(var(--muted)); color: hsl(var(--foreground)); box-shadow: inset 0 -2px 0 hsl(var(--primary)); }
+.segmented button[data-f="review"][aria-pressed="true"] { color: hsl(var(--destructive)); box-shadow: inset 0 -2px 0 hsl(var(--primary)); }
+.segmented button[data-f="dates"][aria-pressed="true"] { color: hsl(var(--accent)); box-shadow: inset 0 -2px 0 hsl(var(--accent)); }
+.segmented button[data-f="clear"][aria-pressed="true"] { color: hsl(var(--chart-3)); box-shadow: inset 0 -2px 0 hsl(var(--chart-3)); }
+
+.clip-list,
+.calendar-pane {
+  border-right-color: hsl(var(--sidebar-border));
+  background: hsl(var(--sidebar));
+  color: hsl(var(--sidebar-foreground));
+}
+.clip-group {
+  border-bottom-color: hsl(var(--sidebar-border));
+  background: hsl(var(--sidebar));
+  color: hsl(var(--sidebar-foreground) / .58);
+  font-family: var(--font-serif);
+}
+.clip-group:hover,
+.clip-item:hover { background: hsl(var(--sidebar-accent)); color: hsl(var(--sidebar-accent-foreground)); }
+.clip-item { border-bottom-color: hsl(var(--sidebar-border) / .55); }
+.clip-item.selected {
+  border-left-color: hsl(var(--primary));
+  background: hsl(var(--sidebar-accent));
+}
+.clip-item.selected.is-clear { border-left-color: hsl(var(--chart-3)); }
+.clip-id { color: hsl(var(--sidebar-foreground)); font-family: var(--font-mono); }
+.clip-sub,
+.clip-airdate,
+.pip,
+.empty-list { color: hsl(var(--sidebar-foreground) / .62); }
+.pip.amber { color: hsl(var(--primary)); }
+.pip.cyan { color: hsl(var(--accent)); }
+.pip.clear { color: hsl(var(--chart-3)); }
+
+.calendar-header h2,
+.calendar-day-heading { color: hsl(var(--sidebar-foreground)); font-family: var(--font-serif); }
+.calendar-weekdays,
+.calendar-empty,
+.calendar-undated { color: hsl(var(--sidebar-foreground) / .58); }
+.calendar-day,
+.calendar-clip,
+.calendar-header .icon-button {
+  border-color: hsl(var(--sidebar-border));
+  background: hsl(var(--sidebar-accent) / .45);
+  color: hsl(var(--sidebar-foreground) / .7);
+}
+.calendar-day.has-clips { border-color: hsl(var(--accent)); color: hsl(var(--sidebar-foreground)); }
+.calendar-day.has-clips b { color: hsl(var(--accent)); }
+.calendar-day.selected { border-color: hsl(var(--primary)); background: hsl(var(--sidebar-accent)); box-shadow: inset 0 -2px 0 hsl(var(--primary)); }
+
+.clip-detail { background: hsl(var(--background)); }
+.detail-top h1,
+.clip-meta dd,
+.synopsis p,
+.synopsis > div:first-child p,
+.note-card p { color: hsl(var(--foreground)); }
+.detail-sub,
+.detail-section > h2,
+.clip-meta dt,
+.detail-section h3,
+.timeline-legend,
+.placeholder,
+.placeholder-big { color: hsl(var(--muted-foreground)); }
+.detail-section > h2::after { background: hsl(var(--border)); }
+.clip-meta {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--border));
+}
+.clip-meta > div,
+.timeline,
+.timeline-empty,
+.note-card {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+}
+.timeline-track,
+.timeline-tick { background: hsl(var(--border)); }
+.marker-dot { box-shadow: 0 0 0 3px hsl(var(--card)); }
+.amber-dot,
+.timeline-marker.amber-marker { color: hsl(var(--primary)); background: hsl(var(--primary)); }
+.cyan-dot,
+.timeline-marker.cyan-marker { color: hsl(var(--accent)); background: hsl(var(--accent)); }
+.note-card.amber { border-left-color: hsl(var(--primary)); }
+.note-card.cyan { border-left-color: hsl(var(--accent)); }
+.note-card.amber .timecode { color: hsl(var(--destructive)); }
+.note-card.cyan .timecode { color: hsl(var(--accent)); }
+.timecode,
+.chip-link,
+kbd {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius-sm);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.chip-link:hover { border-color: hsl(var(--accent)); color: hsl(var(--accent)); }
+.verdict.review { border-color: hsl(var(--primary)); background: hsl(var(--primary) / .12); color: hsl(var(--destructive)); }
+.verdict.clear { border-color: hsl(var(--chart-3)); background: hsl(var(--chart-3) / .1); color: hsl(var(--chart-3)); }
+
+.auth-screen { background: hsl(var(--background)); }
+.auth-card,
+.reports-modal {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+.auth-copy h1,
+.modal-header h2 { font-family: var(--font-serif); }
+.auth-copy p,
+.auth-form label,
+.upload-panel label { color: hsl(var(--muted-foreground)); }
+.auth-form input,
+.upload-panel input,
+.upload-panel select,
+.user-row-actions select {
+  border-color: hsl(var(--border));
+  border-radius: var(--radius-sm);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.auth-form input:focus,
+.upload-panel input:focus,
+.upload-panel select:focus,
+.user-row-actions select:focus { border-color: hsl(var(--ring)); }
+.eyebrow { color: hsl(var(--primary)); font-family: var(--font-mono); }
+.auth-loading { background: hsl(var(--background)); color: hsl(var(--muted-foreground)); }
+.modal-backdrop { background: hsl(var(--sidebar) / .86); }
+.modal-header,
+.report-rows,
+.report-row,
+.user-list-heading { border-color: hsl(var(--border)); }
+.report-row span,
+.modal-empty,
+.current-user-label { color: hsl(var(--muted-foreground)); }
+.permission-note { border-color: hsl(var(--border)); background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.file-picker { border-color: hsl(var(--accent)); background: hsl(var(--accent) / .08); color: hsl(var(--accent)); }
+
+mark {
+  border-radius: var(--radius-sm);
+  background: hsl(var(--accent) / .18);
+  color: hsl(var(--foreground));
 }
 @media print {
   body { overflow: visible; background: #fff; color: #111; }
