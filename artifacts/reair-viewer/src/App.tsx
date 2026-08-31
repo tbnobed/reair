@@ -353,17 +353,17 @@ function Workspace() {
              <p className="mt-3 max-w-none wrap-text break-words text-sm leading-7 text-muted-foreground">{selected.longSynopsis || 'No full synopsis was provided.'}</p>
           </section>
 
-          <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
-            <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
-            <div className="mt-4 flex flex-wrap gap-2">{['Needs edit', 'Hold for context', 'Clear for re-air'].map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => setDecisions((current) => ({ ...current, [selected.id]: option }))}>{option}</Button>)}</div>
-            {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Recorded locally as “{decisions[selected.id]}”. No archive data was changed.</p>}
-          </section>
-
            <div className="mt-7 border-t border-border pt-5">
              <p className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em]">Material timeline</p>
              <div className="relative mt-5 h-12 border-b-2 border-accent">{notes.slice(0, 8).map((_, index) => <i key={index} className="absolute bottom-[-0.375rem] h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-background" style={{ left: `${((index + 1) / (Math.min(notes.length, 8) + 1)) * 100}%` }} />)}</div>
              <div className="mt-2 flex justify-between font-mono text-[0.65rem] text-muted-foreground"><span>00:00</span><span>End</span></div>
            </div>
+
+          <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
+            <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
+            <div className="mt-4 flex flex-wrap gap-2">{['Needs edit', 'Hold for context', 'Clear for re-air'].map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => setDecisions((current) => ({ ...current, [selected.id]: option }))}>{option}</Button>)}</div>
+            {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Recorded locally as “{decisions[selected.id]}”. No archive data was changed.</p>}
+          </section>
         </section>
 
          <aside className="min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
