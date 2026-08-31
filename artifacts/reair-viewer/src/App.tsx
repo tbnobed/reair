@@ -181,6 +181,7 @@ function queueDispositionClass(disposition: string | undefined) {
 
 function Logo() {
   return <div className="viewer-brand" data-testid="brand-reair">
+    <img className="viewer-brand-icon" src={`${import.meta.env.BASE_URL}icons/icon-small.svg`} alt="" aria-hidden="true" />
     <span className="viewer-brand-mark">Re·Air / Praise</span>
   </div>;
 }
@@ -258,9 +259,7 @@ function AuthPage() {
     <div className="auth-card">
       <Logo />
       <div className="auth-copy">
-        <p className="eyebrow">Private review workstation</p>
         <h1>Sign in to Re-Air.</h1>
-        <p>Access the Re-Air archive on your own infrastructure.</p>
       </div>
       <form onSubmit={submit} className="auth-form" noValidate>
         <label>Email address<input data-testid="input-auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@station.org" /></label>

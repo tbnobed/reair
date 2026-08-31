@@ -11,7 +11,7 @@
  * - src/generated/tokens.tsx  hex token object for mobile (Expo) and any other
  *                             platform, so web + mobile share one source.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +23,7 @@ const cssOut = join(root, "src", "index.css");
 const tsOutDir = join(root, "src", "generated");
 const indexHtmlPath = join(root, "index.html");
 const faviconOut = join(root, "public", "favicon.svg");
+const suppliedFavicon = join(root, "public", "icons", "icon.svg");
 
 /** Resolve a DTCG node's $value, following {alias} references. */
 function resolveValue(node, tokens) {
@@ -206,7 +207,8 @@ export function buildTokens() {
   mkdirSync(tsOutDir, { recursive: true });
   writeFileSync(join(tsOutDir, "tokens.tsx"), buildTs(tokens));
   mkdirSync(dirname(faviconOut), { recursive: true });
-  writeFileSync(faviconOut, buildFavicon(tokens));
+  if (existsSync(suppliedFavicon)) copyFileSync(suppliedFavicon, faviconOut);
+  else writeFileSync(faviconOut, buildFavicon(tokens));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
