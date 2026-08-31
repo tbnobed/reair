@@ -159,6 +159,60 @@ function clipResponse(clip: typeof clipsTable.$inferSelect) {
   };
 }
 
+type ClipResponse = ReturnType<typeof clipResponse>;
+
+function mergeResponseStrings(left: string[], right: string[]): string[] {
+  return [...new Set([...left, ...right].map((value) => value.trim()).filter(Boolean))];
+}
+
+function mergeResponseNotes(left: ParsedNote[], right: ParsedNote[]): ParsedNote[] {
+  const unique = new Map<string, ParsedNote>();
+  for (const note of [...left, ...right]) {
+    const normalizedText = note.text.trim();
+    const key = `${note.tc}|${note.secs ?? ""}|${normalizedText.toLowerCase()}`;
+    if (!unique.has(key)) unique.set(key, { ...note, text: normalizedText });
+  }
+  return [...unique.values()].sort((a, b) => (a.secs ?? 1e9) - (b.secs ?? 1e9));
+}
+
+function preferResponseText(left: string, right: string): string {
+  return left.length >= right.length ? left : right;
+}
+
+function mergeResponseClips(clips: ClipResponse[]): ClipResponse[] {
+  const merged = new Map<string, ClipResponse>();
+  for (const clip of clips) {
+    const existing = merged.get(clip.id);
+    if (!existing) {
+      merged.set(clip.id, clip);
+      continue;
+    }
+
+    const shortSynopsis = preferResponseText(existing.shortSynopsis, clip.shortSynopsis);
+    const longSynopsis = preferResponseText(existing.longSynopsis, clip.longSynopsis);
+    const sensitiveNotes = mergeResponseNotes(existing.sensitiveNotes, clip.sensitiveNotes);
+    const dateNotes = mergeResponseNotes(existing.dateNotes, clip.dateNotes);
+    merged.set(clip.id, {
+      ...existing,
+      date: existing.date ?? clip.date,
+      revision: existing.revision ?? clip.revision,
+      time: existing.time ?? clip.time,
+      originalAir: existing.originalAir ?? clip.originalAir,
+      lastAir: existing.lastAir ?? clip.lastAir,
+      hosts: mergeResponseStrings(existing.hosts, clip.hosts),
+      guests: mergeResponseStrings(existing.guests, clip.guests),
+      shortSynopsis,
+      longSynopsis,
+      duplicateLongSynopsis: !longSynopsis
+        && (existing.duplicateLongSynopsis || clip.duplicateLongSynopsis),
+      sensitiveNotes,
+      dateNotes,
+      flagCount: sensitiveNotes.length + dateNotes.length,
+    });
+  }
+  return [...merged.values()];
+}
+
 router.post("/reports/ingest", requireReportIngestToken, async (request, response): Promise<void> => {
   const parsed = UploadReportBody.safeParse(request.body);
   if (!parsed.success) {
@@ -264,7 +318,7 @@ router.get("/clips", async (_request, response): Promise<void> => {
     .select({ clip: clipsTable })
     .from(clipsTable)
     .orderBy(desc(clipsTable.id));
-  response.json(ListClipsResponse.parse(rows.map((row) => clipResponse(row.clip))));
+  response.json(ListClipsResponse.parse(mergeResponseClips(rows.map((row) => clipResponse(row.clip)))));
 });
 
 export default router;

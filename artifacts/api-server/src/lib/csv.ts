@@ -154,9 +154,61 @@ function splitPeople(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function mergeStrings(left: string[], right: string[]): string[] {
+  return [...new Set([...left, ...right].map((value) => value.trim()).filter(Boolean))];
+}
+
+function mergeNotes(left: ParsedNote[], right: ParsedNote[]): ParsedNote[] {
+  const unique = new Map<string, ParsedNote>();
+  for (const note of [...left, ...right]) {
+    const normalizedText = note.text.trim();
+    const key = `${note.tc}|${note.secs ?? ""}|${normalizedText.toLowerCase()}`;
+    if (!unique.has(key)) unique.set(key, { ...note, text: normalizedText });
+  }
+  return [...unique.values()].sort((a, b) => (a.secs ?? 1e9) - (b.secs ?? 1e9));
+}
+
+function preferText(left: string, right: string): string {
+  return left.length >= right.length ? left : right;
+}
+
+export function mergeParsedClips(clips: ParsedClip[]): ParsedClip[] {
+  const merged = new Map<string, ParsedClip>();
+  for (const clip of clips) {
+    const existing = merged.get(clip.clipKey);
+    if (!existing) {
+      merged.set(clip.clipKey, clip);
+      continue;
+    }
+
+    const shortSynopsis = preferText(existing.shortSynopsis, clip.shortSynopsis);
+    const longSynopsis = preferText(existing.longSynopsis, clip.longSynopsis);
+    const sensitiveNotes = mergeNotes(existing.sensitiveNotes, clip.sensitiveNotes);
+    const dateNotes = mergeNotes(existing.dateNotes, clip.dateNotes);
+    merged.set(clip.clipKey, {
+      ...existing,
+      date: existing.date ?? clip.date,
+      revision: existing.revision ?? clip.revision,
+      time: existing.time ?? clip.time,
+      originalAir: existing.originalAir ?? clip.originalAir,
+      lastAir: existing.lastAir ?? clip.lastAir,
+      hosts: mergeStrings(existing.hosts, clip.hosts),
+      guests: mergeStrings(existing.guests, clip.guests),
+      shortSynopsis,
+      longSynopsis,
+      duplicateLongSynopsis: !longSynopsis
+        && (existing.duplicateLongSynopsis || clip.duplicateLongSynopsis),
+      sensitiveNotes,
+      dateNotes,
+      flagCount: sensitiveNotes.length + dateNotes.length,
+    });
+  }
+  return [...merged.values()];
+}
+
 export function parseReport(content: string): ParsedClip[] {
   const rows = parseCSV(content);
-  return rows
+  const clips = rows
     .filter((row) => row[COL.id])
     .map((row) => {
       const id = row[COL.id];
@@ -181,4 +233,5 @@ export function parseReport(content: string): ParsedClip[] {
         flagCount: sensitiveNotes.length + dateNotes.length,
       };
     });
+  return mergeParsedClips(clips);
 }

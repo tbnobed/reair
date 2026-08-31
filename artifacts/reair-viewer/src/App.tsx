@@ -309,7 +309,7 @@ function Workspace() {
         <div className="font-mono text-xs">{reviewed} / {clips.length} resolved</div>
       </section>
 
-      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
+       <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
         <aside className="bg-sidebar p-4 text-sidebar-foreground">
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
           <div className="mt-3 flex gap-2"><Input data-testid="input-clip-search" aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
@@ -336,21 +336,21 @@ function Workspace() {
               ))}
             </div>
           </div>
-          <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
+           <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
             <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); }}>
-              <span className="min-w-0"><span className="block font-mono text-xs">{clip.id}</span><span className="mt-1 block truncate text-xs opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1 block truncate font-mono text-[0.65rem] opacity-65">Original airdate · {formatDate(clip.originalAir)}</span><span className="mt-1.5 block font-mono text-[0.65rem] opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
+               <span className="min-w-0 wrap-text"><span className="block break-words font-mono text-xs">{clip.id}</span><span className="mt-1 block break-words text-xs leading-5 opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1 block break-words font-mono text-[0.65rem] leading-5 opacity-65">Original airdate · {formatDate(clip.originalAir)}</span><span className="mt-1.5 block break-words font-mono text-[0.65rem] leading-5 opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
             </Button>)}</div>
           </div>
         </aside>
 
-        <section className="min-w-0 border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
-          <div className="flex flex-wrap items-center justify-between gap-3"><span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span><Button variant="ghost" size="sm" onClick={nextClip}>Skip to next <ChevronRight /></Button></div>
-          <h1 className="mt-3 font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{selected.id}</h1>
-          <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
+         <section className="min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
+           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span><Button variant="ghost" size="sm" onClick={nextClip}>Skip to next <ChevronRight /></Button></div>
+           <h1 className="mt-3 break-words font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{selected.id}</h1>
+           <p className="mt-2 max-w-none wrap-text break-words text-base leading-7 text-muted-foreground">{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
 
-          <section className="mt-7 border-y border-border py-5">
+           <section className="mt-7 min-w-0 border-y border-border py-5">
             <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Full synopsis</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">{selected.longSynopsis || 'No full synopsis was provided.'}</p>
+             <p className="mt-3 max-w-none wrap-text break-words text-sm leading-7 text-muted-foreground">{selected.longSynopsis || 'No full synopsis was provided.'}</p>
           </section>
 
           <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
@@ -360,20 +360,20 @@ function Workspace() {
           </section>
         </section>
 
-        <aside className="max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
+         <aside className="min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
           <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
           <dl className="mt-3 divide-y divide-border border-y border-border">
-            {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded']].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
+             {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded']].map(([label, value]) => <div className="min-w-0 py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 wrap-text break-words text-sm leading-5">{value}</dd></div>)}
           </dl>
 
-          <div className="mt-6 grid gap-5 border-t border-border pt-5 xl:grid-cols-2">
-            <section>
+           <div className="mt-6 grid min-w-0 gap-5 border-t border-border pt-5 xl:grid-cols-2">
+             <section className="min-w-0">
               <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Timed material</h2>
-              {timedNotes.length ? <div className="mt-3 grid gap-2">{timedNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
+               {timedNotes.length ? <div className="mt-3 grid gap-2">{timedNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid min-w-0 gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="wrap-text break-words text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 wrap-text break-words text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
             </section>
-            <section>
+             <section className="min-w-0">
               <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Date notes</h2>
-              {dateNotes.length ? <div className="mt-3 grid gap-2">{dateNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No date notes were recorded for this clip.</p>}
+               {dateNotes.length ? <div className="mt-3 grid gap-2">{dateNotes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid min-w-0 gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="wrap-text break-words text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 wrap-text break-words text-sm leading-6 text-muted-foreground">No date notes were recorded for this clip.</p>}
             </section>
           </div>
 
