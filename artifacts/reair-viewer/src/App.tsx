@@ -279,6 +279,7 @@ function AuthPage() {
 
 function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [decisions, setDecisions] = useState<Record<string, Disposition | undefined>>({});
   const [episodeDraft, setEpisodeDraft] = useState('');
@@ -328,6 +329,7 @@ function Workspace() {
   useEffect(() => {
     if (selectedId && view.some((clip) => clip.id === selectedId)) return;
     setSelectedId(view[0]?.id ?? null);
+    setMobileDetailOpen(false);
   }, [selectedId, view]);
 
   useEffect(() => {
@@ -509,7 +511,7 @@ function Workspace() {
     setAnnotationError('');
   };
 
-  return <main className="workspace-shell min-h-screen bg-background font-sans text-foreground">
+  return <main className={`workspace-shell min-h-screen bg-background font-sans text-foreground${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
     <header className="workspace-header flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
       <Logo />
       <div className="ml-auto flex items-center gap-2">
@@ -556,7 +558,13 @@ function Workspace() {
 
        <div className="workspace-grid grid min-h-0 grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
         <aside className="workspace-queue bg-sidebar p-4 text-sidebar-foreground">
-          <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
+          <div className="queue-heading">
+            <div>
+              <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue</p>
+              <p className="queue-heading-count">{view.length} clip{view.length === 1 ? '' : 's'} to review</p>
+            </div>
+            <span className="queue-heading-total">{clips.length} total</span>
+          </div>
           <div className="mt-3 flex gap-2"><Input data-testid="input-clip-search" aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
           <div className="mt-3 grid gap-2 border-y border-sidebar-border py-3">
             <label className="flex items-center justify-between gap-3 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-sidebar-foreground/60" htmlFor="queue-sort">Sort queue
@@ -581,14 +589,20 @@ function Workspace() {
               ))}
             </div>
           </div>
-           <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
-            <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className={`queue-clip h-auto w-full justify-start whitespace-normal text-left ${queueDispositionClass(decisions[clip.id])}`} data-disposition={decisions[clip.id]} onClick={() => { setSelectedId(clip.id); }}>
-               <span className="min-w-0 wrap-text"><span className="block break-words font-mono text-xs">{clip.id}</span><span className="mt-1 block break-words text-xs leading-5 opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1 block break-words font-mono text-[0.65rem] leading-5 opacity-65">Original airdate · {formatDate(clip.originalAir)}</span>{decisions[clip.id] ? <span className={`mt-1.5 block break-words font-mono text-[0.65rem] leading-5 queue-disposition-label ${queueDispositionClass(decisions[clip.id])}`}>{decisions[clip.id]}</span> : <span className="mt-1.5 block break-words font-mono text-[0.65rem] leading-5 opacity-80">{`${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span>}</span>
+           <div className="queue-results mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
+           <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className={`queue-clip h-auto w-full justify-start whitespace-normal text-left ${queueDispositionClass(decisions[clip.id])}`} data-testid={`button-open-clip-${clip.id}`} data-disposition={decisions[clip.id]} aria-label={`Open clip ${clip.id}`} onClick={() => { setSelectedId(clip.id); setMobileDetailOpen(true); }}>
+                <span className="queue-clip-content min-w-0 wrap-text">
+                  <span className="queue-clip-heading"><span className="queue-clip-id break-words font-mono">{clip.id}</span>{clip.revision && <span className="revision">{clip.revision}</span>}<ChevronRight className="queue-clip-arrow" /></span>
+                  <span className="queue-clip-airdate"><Clock3 /><span><small>Original airdate</small>{formatDate(clip.originalAir)}</span></span>
+                  <span className="queue-clip-people break-words">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span>
+                  {decisions[clip.id] ? <span className={`queue-disposition-label ${queueDispositionClass(decisions[clip.id])}`}>{decisions[clip.id]}</span> : <span className="queue-clip-flags">{`${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span>}
+                </span>
             </Button>)}</div>
           </div>
         </aside>
 
          <section className="workspace-detail min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
+            <Button data-testid="button-mobile-back-to-clips" className="mobile-back-to-clips" variant="ghost" size="sm" onClick={() => setMobileDetailOpen(false)}><ChevronLeft /> All clips</Button>
            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
              <span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span>
              <div className="flex flex-wrap items-center gap-2">
