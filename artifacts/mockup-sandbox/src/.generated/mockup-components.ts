@@ -4,5 +4,6 @@ export const modules: ModuleMap = {
   "./components/mockups/reair-ux-exploration/ArchiveWorkbench.tsx": () => import("../components/mockups/reair-ux-exploration/ArchiveWorkbench.tsx"),
   "./components/mockups/reair-ux-exploration/CommandCenter.tsx": () => import("../components/mockups/reair-ux-exploration/CommandCenter.tsx"),
   "./components/mockups/reair-ux-exploration/Current.tsx": () => import("../components/mockups/reair-ux-exploration/Current.tsx"),
-  "./components/mockups/reair-ux-exploration/GuidedReview.tsx": () => import("../components/mockups/reair-ux-exploration/GuidedReview.tsx")
+  "./components/mockups/reair-ux-exploration/GuidedReview.tsx": () => import("../components/mockups/reair-ux-exploration/GuidedReview.tsx"),
+  "./components/mockups/reair-ux-exploration/TriageBoard.tsx": () => import("../components/mockups/reair-ux-exploration/TriageBoard.tsx")
 };
