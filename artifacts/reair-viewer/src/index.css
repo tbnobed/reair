@@ -1102,12 +1102,6 @@ mark {
   .workspace-detail > :not(.mobile-detail-view) { display: none; }
   .mobile-detail-view { display: block; }
   .workspace-context { display: none; }
-  .workspace-shell.mobile-detail-open .workspace-context {
-    display: block;
-    max-height: none;
-    overflow: visible;
-    padding: 0 1rem 5rem;
-  }
   .mobile-back-to-clips {
     display: inline-flex;
     min-height: 2.75rem;
