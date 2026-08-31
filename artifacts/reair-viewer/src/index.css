@@ -476,7 +476,7 @@ kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 3px; backg
   .header-stats .span { display: none; }
   .segmented button { padding-right: 9px; padding-left: 9px; }
 }
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
   body { overflow: auto; }
   .viewer-header { flex-wrap: wrap; height: auto; min-height: 56px; padding: 10px 14px; gap: 9px; }
   .brand-lockup { flex: 1 1 auto; }
@@ -793,7 +793,7 @@ mark {
 
 /* Mobile field-desk pass: keep the queue, evidence, and decision rail usable
    without changing the archive's information architecture. */
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
   html, body, #root { min-height: 100%; height: auto; }
   body { overflow-x: hidden; padding-bottom: env(safe-area-inset-bottom); }
   .viewer-header {
@@ -916,7 +916,7 @@ mark {
 
 /* Workspace composition uses the same mobile rules as the legacy viewer
    primitives, while retaining the existing API-driven screen. */
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
   .workspace-shell { min-height: 100svh; }
   .workspace-header {
     position: sticky;
@@ -1064,7 +1064,7 @@ mark {
 .workspace-context { display: block; }
 .mobile-detail-view { display: none; }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
   .workspace-grid { display: block; }
   .workspace-queue {
     min-height: calc(100svh - 8rem);
@@ -1129,7 +1129,7 @@ mark {
   .workspace-shell.mobile-detail-open .workspace-detail { min-height: calc(100svh - 7rem); }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
   .mobile-detail-heading {
     display: grid;
     gap: 1rem;
