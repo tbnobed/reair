@@ -512,6 +512,12 @@ function Workspace() {
     setAnnotationError('');
   };
 
+  const cancelAnnotationEdit = () => {
+    setEditingAnnotation(null);
+    setAnnotationDraft('');
+    setAnnotationError('');
+  };
+
   return <main className={`workspace-shell min-h-screen bg-background font-sans text-foreground${mobileDetailOpen ? ' mobile-detail-open' : ''}`}>
     <header className="workspace-header flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
       <Logo />
@@ -675,7 +681,7 @@ function Workspace() {
                  {timedNotes.length ? <div className="mobile-review-list">{timedNotes.map((note, index) => {
                    const kind: ReviewNoteKind = 'timed';
                    const noteKey = reviewNoteKey(kind, note);
-                   return <ReviewNoteCard key={`${noteKey}-${index}`} canEdit={canEditReports} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
+                   return <ReviewNoteCard key={`${noteKey}-${index}`} canEdit={canEditReports} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onCancel={cancelAnnotationEdit} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
                  })}</div> : <p className="mobile-help-text">No timed notes were recorded for this clip.</p>}
                </section>
                <section className="mobile-detail-section">
@@ -683,7 +689,7 @@ function Workspace() {
                  {dateNotes.length ? <div className="mobile-review-list">{dateNotes.map((note, index) => {
                    const kind: ReviewNoteKind = 'date';
                    const noteKey = reviewNoteKey(kind, note);
-                   return <ReviewNoteCard key={`${noteKey}-${index}`} canEdit={canEditReports} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
+                   return <ReviewNoteCard key={`${noteKey}-${index}`} canEdit={canEditReports} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onCancel={cancelAnnotationEdit} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
                  })}</div> : <p className="mobile-help-text">No date notes were recorded for this clip.</p>}
                </section>
              </div>}
@@ -785,6 +791,7 @@ function Workspace() {
                     error={annotationError}
                     saving={saveAnnotation.isPending}
                     onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))}
+                    onCancel={cancelAnnotationEdit}
                     onDraftChange={setAnnotationDraft}
                     onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)}
                     onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)}
@@ -807,6 +814,7 @@ function Workspace() {
                     error={annotationError}
                     saving={saveAnnotation.isPending}
                     onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))}
+                    onCancel={cancelAnnotationEdit}
                     onDraftChange={setAnnotationDraft}
                     onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)}
                     onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)}
@@ -835,6 +843,7 @@ function ReviewNoteCard({
   error,
   saving,
   onEdit,
+  onCancel,
   onDraftChange,
   onSave,
   onStatus,
@@ -848,6 +857,7 @@ function ReviewNoteCard({
   error: string;
   saving: boolean;
   onEdit: () => void;
+  onCancel: () => void;
   onDraftChange: (value: string) => void;
   onSave: () => void;
   onStatus: (status: ReviewAnnotation['status']) => void;
@@ -896,7 +906,7 @@ function ReviewNoteCard({
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <span className="font-mono text-[0.6rem] text-muted-foreground">{draft.length} / 5,000</span>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant="ghost" onClick={onEdit} disabled={saving}>Cancel</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>
                 <Button type="button" size="sm" onClick={onSave} disabled={saving}>{saving ? <LoaderCircle className="spin" /> : <Check />}{saving ? 'Saving…' : 'Save note'}</Button>
               </div>
             </div>
