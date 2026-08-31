@@ -675,7 +675,7 @@ function Workspace() {
                  {timedNotes.length ? <div className="mobile-review-list">{timedNotes.map((note, index) => {
                    const kind: ReviewNoteKind = 'timed';
                    const noteKey = reviewNoteKey(kind, note);
-                   return <ReviewNoteCard key={`${noteKey}-${index}`} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
+                   return <ReviewNoteCard key={`${noteKey}-${index}`} canEdit={canEditReports} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
                  })}</div> : <p className="mobile-help-text">No timed notes were recorded for this clip.</p>}
                </section>
                <section className="mobile-detail-section">
@@ -683,7 +683,7 @@ function Workspace() {
                  {dateNotes.length ? <div className="mobile-review-list">{dateNotes.map((note, index) => {
                    const kind: ReviewNoteKind = 'date';
                    const noteKey = reviewNoteKey(kind, note);
-                   return <ReviewNoteCard key={`${noteKey}-${index}`} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
+                   return <ReviewNoteCard key={`${noteKey}-${index}`} canEdit={canEditReports} kind={kind} note={note} annotation={annotationById.get(`${kind}|${noteKey}`)} editing={editingAnnotation?.kind === kind && editingAnnotation.noteKey === noteKey} draft={annotationDraft} error={annotationError} saving={saveAnnotation.isPending} onEdit={() => beginAnnotationEdit(kind, noteKey, annotationById.get(`${kind}|${noteKey}`))} onDraftChange={setAnnotationDraft} onSave={() => saveFlagAnnotation(kind, noteKey, annotationDraft.trim(), annotationById.get(`${kind}|${noteKey}`)?.status ?? null)} onStatus={(status) => saveFlagAnnotation(kind, noteKey, annotationById.get(`${kind}|${noteKey}`)?.note ?? '', status)} />;
                  })}</div> : <p className="mobile-help-text">No date notes were recorded for this clip.</p>}
                </section>
              </div>}
@@ -776,6 +776,7 @@ function Workspace() {
                   const noteKey = reviewNoteKey(kind, note);
                   return <ReviewNoteCard
                     key={`${noteKey}-${index}`}
+                    canEdit={canEditReports}
                     kind={kind}
                     note={note}
                     annotation={annotationById.get(`${kind}|${noteKey}`)}
@@ -797,6 +798,7 @@ function Workspace() {
                   const noteKey = reviewNoteKey(kind, note);
                   return <ReviewNoteCard
                     key={`${noteKey}-${index}`}
+                    canEdit={canEditReports}
                     kind={kind}
                     note={note}
                     annotation={annotationById.get(`${kind}|${noteKey}`)}
@@ -824,6 +826,7 @@ function Workspace() {
 }
 
 function ReviewNoteCard({
+  canEdit,
   kind,
   note,
   annotation,
@@ -836,6 +839,7 @@ function ReviewNoteCard({
   onSave,
   onStatus,
 }: {
+  canEdit: boolean;
   kind: ReviewNoteKind;
   note: { tc: string; text: string };
   annotation?: ReviewAnnotation;
@@ -853,7 +857,24 @@ function ReviewNoteCard({
 
   return <ContextMenu>
     <ContextMenuTrigger asChild>
-      <Card className={`review-flag-card${annotation?.status ? ` ${annotation.status}` : ''}`} data-testid={`review-flag-${kind}-${note.tc || 'untimed'}`}>
+      <Card
+        className={`review-flag-card${annotation?.status ? ` ${annotation.status}` : ''}${canEdit ? ' review-flag-card-actionable' : ''}`}
+        data-testid={`review-flag-${kind}-${note.tc || 'untimed'}`}
+        role={canEdit ? 'button' : undefined}
+        tabIndex={canEdit ? 0 : undefined}
+        aria-label={canEdit ? `${annotation?.note ? 'Edit' : 'Add'} note for ${kindLabel.toLowerCase()} at ${note.tc || 'untimed'}` : undefined}
+        onClick={(event) => {
+          if (!canEdit || editing || (event.target as HTMLElement).closest('button, textarea, input, select')) return;
+          onEdit();
+        }}
+        onKeyDown={(event) => {
+          if (!canEdit || editing || (event.target as HTMLElement).closest('button, textarea, input, select')) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onEdit();
+          }
+        }}
+      >
         <CardContent className="grid min-w-0 gap-2 p-3">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
             <Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge>
@@ -861,7 +882,7 @@ function ReviewNoteCard({
           </div>
           <p className="wrap-text break-words text-xs leading-5">{note.text}</p>
           {annotation?.note && <div className="reviewer-note"><MessageSquareText className="mt-0.5 h-3.5 w-3.5 flex-none text-primary" /><p className="wrap-text break-words text-xs leading-5">{annotation.note}</p></div>}
-          {editing && <div className="review-note-editor" onContextMenu={(event) => event.stopPropagation()}>
+          {editing && <div className="review-note-editor" onClick={(event) => event.stopPropagation()} onContextMenu={(event) => event.stopPropagation()}>
             <label htmlFor={`annotation-${kind}-${note.tc || 'untimed'}`} className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">Editor note</label>
             <Textarea
               id={`annotation-${kind}-${note.tc || 'untimed'}`}
@@ -882,6 +903,12 @@ function ReviewNoteCard({
             {error && <p className="mt-2 text-xs text-destructive" role="alert">{error}</p>}
           </div>}
           {annotation?.updatedBy && <p className="review-annotation-meta">Shared annotation · updated by {annotation.updatedBy}</p>}
+          {canEdit && <div className="mobile-review-actions" onClick={(event) => event.stopPropagation()}>
+            <Button type="button" size="sm" variant="ghost" onClick={onEdit} disabled={saving}><MessageSquareText />{annotation?.note ? 'Edit note' : 'Add note'}</Button>
+            <Button type="button" size="sm" variant={annotation?.status === 'good-to-re-air' ? 'default' : 'outline'} onClick={() => onStatus('good-to-re-air')} disabled={saving}><CheckCircle2 />Ready</Button>
+            <Button type="button" size="sm" variant={annotation?.status === 'needs-edit' ? 'destructive' : 'outline'} onClick={() => onStatus('needs-edit')} disabled={saving}><Flag />Needs edit</Button>
+            {annotation?.status && <Button type="button" size="sm" variant="ghost" onClick={() => onStatus(null)} disabled={saving}><X />Clear</Button>}
+          </div>}
         </CardContent>
       </Card>
     </ContextMenuTrigger>

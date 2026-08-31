@@ -746,6 +746,8 @@ kbd {
 .queue-disposition-label.disposition-clear { color: hsl(var(--chart-3)); opacity: 1; }
 .review-flag-card { transition: border-color .15s, box-shadow .15s, background .15s; }
 .review-flag-card:hover { border-color: hsl(var(--accent)); background: hsl(var(--card)); }
+.review-flag-card-actionable { cursor: pointer; }
+.review-flag-card-actionable:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .review-flag-card.good-to-re-air { border-color: hsl(var(--chart-3)); box-shadow: inset 3px 0 0 hsl(var(--chart-3)); }
 .review-flag-card.needs-edit { border-color: hsl(var(--destructive)); box-shadow: inset 3px 0 0 hsl(var(--destructive)); }
 .review-status-badge { gap: 5px; }
@@ -1335,6 +1337,25 @@ mark {
     margin-top: .75rem;
   }
   .mobile-review-list .review-flag-card { min-width: 0; }
+  .mobile-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    padding-top: .6rem;
+    border-top: 1px solid hsl(var(--border));
+  }
+  .mobile-review-actions .btn {
+    min-height: 2.5rem;
+    flex: 1 1 8rem;
+    justify-content: center;
+    padding-right: .55rem;
+    padding-left: .55rem;
+    font-size: .68rem;
+  }
+  .mobile-review-actions .btn svg {
+    width: .9rem;
+    height: .9rem;
+  }
 }
 
 @keyframes mobile-tab-in {
