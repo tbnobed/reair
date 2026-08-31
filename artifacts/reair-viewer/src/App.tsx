@@ -677,7 +677,7 @@ function Workspace() {
           </section>
         </section>
 
-         <aside className="min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
+          <aside className="workspace-context min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
           <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
           <dl className="mt-3 divide-y divide-border border-y border-border">
              {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded']].map(([label, value]) => <div className="min-w-0 py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 wrap-text break-words text-sm leading-5">{value}</dd></div>)}

@@ -1059,6 +1059,7 @@ mark {
   font-size: .65rem;
 }
 .mobile-back-to-clips { display: none; }
+.workspace-context { display: block; }
 
 @media (max-width: 900px) {
   .workspace-grid { display: block; }
@@ -1096,6 +1097,13 @@ mark {
   .workspace-shell.mobile-detail-open .workspace-detail {
     display: block;
     min-height: calc(100svh - 8rem);
+  }
+  .workspace-context { display: none; }
+  .workspace-shell.mobile-detail-open .workspace-context {
+    display: block;
+    max-height: none;
+    overflow: visible;
+    padding: 0 1rem 5rem;
   }
   .mobile-back-to-clips {
     display: inline-flex;
