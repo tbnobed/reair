@@ -509,8 +509,8 @@ function Workspace() {
     setAnnotationError('');
   };
 
-  return <main className="min-h-screen bg-background font-sans text-foreground">
-    <header className="flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
+  return <main className="workspace-shell min-h-screen bg-background font-sans text-foreground">
+    <header className="workspace-header flex min-h-16 flex-wrap items-center gap-3 border-b-4 border-primary bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-7">
       <Logo />
       <div className="ml-auto flex items-center gap-2">
         <div className="header-account" title={session?.user?.email ?? 'Signed-in account'}>
@@ -520,11 +520,11 @@ function Workspace() {
             <span>{roleLabels[currentRole]}</span>
           </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => window.print()}><Printer /> Print sheet</Button>
-        <Button variant="secondary" size="sm" onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="hidden sm:inline">{canEditReports ? 'Add data' : 'Data'}</span></Button>
-        {currentRole === 'admin' && <Button variant="secondary" size="sm" onClick={() => setShowUsers(true)}><Users /><span className="hidden sm:inline">Users</span></Button>}
-        <Button variant="secondary" size="sm" onClick={() => setShowPassword(true)}><KeyRound /><span className="hidden sm:inline">Change password</span></Button>
-        <Button variant="secondary" size="icon" aria-label={`Sign out ${session?.user?.email ?? roleLabels[currentRole]}`} onClick={signOut}><LogOut /></Button>
+        <Button data-testid="button-print-sheet" className="header-print" variant="secondary" size="sm" aria-label="Print sheet" onClick={() => window.print()}><Printer /><span className="header-action-label">Print sheet</span></Button>
+        <Button data-testid="button-open-reports" variant="secondary" size="sm" aria-label={canEditReports ? 'Add data' : 'View data'} onClick={() => setShowReports(true)}>{canEditReports ? <FilePlus2 /> : <FolderOpen />}<span className="header-action-label hidden sm:inline">{canEditReports ? 'Add data' : 'Data'}</span></Button>
+        {currentRole === 'admin' && <Button data-testid="button-open-users" variant="secondary" size="sm" aria-label="Manage users" onClick={() => setShowUsers(true)}><Users /><span className="header-action-label hidden sm:inline">Users</span></Button>}
+        <Button data-testid="button-open-password" variant="secondary" size="sm" aria-label="Change password" onClick={() => setShowPassword(true)}><KeyRound /><span className="header-action-label hidden sm:inline">Change password</span></Button>
+        <Button data-testid="button-sign-out" variant="secondary" size="icon" aria-label={`Sign out ${session?.user?.email ?? roleLabels[currentRole]}`} onClick={signOut}><LogOut /></Button>
       </div>
     </header>
 
@@ -544,7 +544,7 @@ function Workspace() {
         <Button className="mt-5" onClick={() => { setQuery(''); setDispositionFilter('all'); }}>Clear filters</Button>
       </div>
     </section> : <>
-      <section className="grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress and disposition filters">
+      <section className="workspace-progress grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress and disposition filters">
         <div />
         <div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${reviewed} of ${clips.length} clips reviewed`} aria-valuemin={0} aria-valuemax={clips.length} aria-valuenow={reviewed}>
@@ -554,8 +554,8 @@ function Workspace() {
         <div className="font-mono text-xs">{reviewed} / {clips.length} resolved</div>
       </section>
 
-       <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
-        <aside className="bg-sidebar p-4 text-sidebar-foreground">
+       <div className="workspace-grid grid min-h-0 grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
+        <aside className="workspace-queue bg-sidebar p-4 text-sidebar-foreground">
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
           <div className="mt-3 flex gap-2"><Input data-testid="input-clip-search" aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
           <div className="mt-3 grid gap-2 border-y border-sidebar-border py-3">
@@ -588,7 +588,7 @@ function Workspace() {
           </div>
         </aside>
 
-         <section className="min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
+         <section className="workspace-detail min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
              <span className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</span>
              <div className="flex flex-wrap items-center gap-2">
@@ -648,7 +648,7 @@ function Workspace() {
              />
              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                <span className="text-xs text-muted-foreground">{reviewError ? 'Saved notes are temporarily unavailable.' : 'Notes are shared with every reviewer.'}</span>
-               <Button size="sm" onClick={saveEpisodeNotes} disabled={!episodeDirty || saveEpisodeReview.isPending || reviewLoading}>
+               <Button data-testid="button-save-episode-notes" size="sm" onClick={saveEpisodeNotes} disabled={!episodeDirty || saveEpisodeReview.isPending || reviewLoading}>
                  {saveEpisodeReview.isPending ? <LoaderCircle className="spin" /> : <Check />}
                  {saveEpisodeReview.isPending ? 'Saving…' : 'Save notes'}
                </Button>
@@ -656,9 +656,9 @@ function Workspace() {
              {reviewSaveError && <p className="mt-2 text-xs text-destructive" role="alert">{reviewSaveError}</p>}
            </section>
 
-           <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
+           <section className="workspace-decision mt-7 bg-secondary p-5 text-secondary-foreground">
             <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
-             <div className="mt-4 flex flex-wrap gap-2">{dispositionOptions.map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => saveDisposition(option)} disabled={reviewLoading || saveEpisodeReview.isPending}>{option}</Button>)}</div>
+             <div className="mt-4 flex flex-wrap gap-2">{dispositionOptions.map((option) => <Button data-testid={`button-disposition-${option.toLowerCase().replaceAll(' ', '-')}`} key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => saveDisposition(option)} disabled={reviewLoading || saveEpisodeReview.isPending}>{option}</Button>)}</div>
              {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Saved for every reviewer as “{decisions[selected.id]}”.</p>}
           </section>
         </section>

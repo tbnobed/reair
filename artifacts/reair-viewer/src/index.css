@@ -788,3 +788,194 @@ mark {
   .timeline-legend { color: #555; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* Mobile field-desk pass: keep the queue, evidence, and decision rail usable
+   without changing the archive's information architecture. */
+@media (max-width: 900px) {
+  html, body, #root { min-height: 100%; height: auto; }
+  body { overflow-x: hidden; padding-bottom: env(safe-area-inset-bottom); }
+  .viewer-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    align-items: center;
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+  .viewer-header .viewer-brand-mark { overflow: hidden; text-overflow: ellipsis; }
+  .viewer-header > .ml-auto {
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: 0.25rem;
+  }
+  .viewer-header > .ml-auto .btn { min-height: 2.75rem; }
+  .viewer-header .header-account { min-width: 0; margin-right: 0.25rem; }
+  .viewer-header .header-account-copy { display: none; }
+  .viewer-header .header-account-icon { width: 1.25rem; height: 1.25rem; }
+  .viewer-header .header-action-label { display: none; }
+  .viewer-header .header-print { display: none; }
+  .viewer-toolbar {
+    position: sticky;
+    top: 4.25rem;
+    z-index: 20;
+  }
+  .viewer-toolbar .segmented { min-height: 2.75rem; }
+  .viewer-toolbar .segmented button,
+  .viewer-toolbar select { min-height: 2.75rem; }
+  .viewer-layout { min-height: 0; }
+  .clip-list, .calendar-pane {
+    max-height: none;
+    min-height: 0;
+  }
+  .clip-list { max-height: 42svh; }
+  .clip-item { min-height: 4.25rem; padding: 0.75rem 1rem 0.75rem 0.875rem; }
+  .clip-group { min-height: 2.75rem; padding-right: 1rem; padding-left: 1rem; }
+  .clip-detail { min-height: 0; }
+  .detail-pane { padding: 1.25rem 1rem 5rem; }
+  .detail-top { gap: 0.75rem; }
+  .detail-top > div:first-child { min-width: 0; flex: 1 1 100%; }
+  .detail-top h1 { font-size: 1.25rem; }
+  .verdict { width: 100%; margin-left: 0; justify-content: flex-start; white-space: normal; }
+  .clip-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1rem; }
+  .clip-meta > div { padding: 0.75rem; }
+  .clip-meta > div:nth-child(3),
+  .clip-meta > div:nth-child(4) { grid-column: span 2; }
+  .timeline { min-height: 7.875rem; overflow-x: auto; }
+  .notes-grid { gap: 0.75rem; }
+  .note-card { gap: 0.625rem; padding: 0.75rem; }
+  .timecode { width: 4.5rem; min-height: 2.75rem; display: grid; place-items: center; }
+  .modal-backdrop {
+    place-items: end center;
+    padding: 0;
+    overscroll-behavior: contain;
+  }
+  .reports-modal {
+    width: 100%;
+    max-height: min(92svh, 48rem);
+    padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+    animation: sheet-in 180ms ease-out both;
+  }
+  .modal-header { gap: 0.75rem; padding-bottom: 1rem; }
+  .modal-header h2 { font-size: 1.375rem; }
+  .modal-header .icon-button,
+  .modal-actions .btn,
+  .file-picker { min-height: 2.75rem; }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1 1 9rem; }
+  .report-row { align-items: flex-start; gap: 0.75rem; padding: 1rem 0; }
+  .report-row strong { white-space: normal; overflow-wrap: anywhere; }
+  .users-modal { max-height: 96svh; }
+  .user-create-form { gap: 1rem; }
+  .user-row { flex-direction: column; }
+  .user-row-actions { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
+  .user-row-actions select { min-height: 2.75rem; flex: 1 1 auto; }
+  .password-modal { max-height: none; }
+  .auth-screen {
+    min-height: 100svh;
+    align-items: start;
+    padding: max(1.25rem, env(safe-area-inset-top)) 1rem calc(1.25rem + env(safe-area-inset-bottom));
+  }
+  .auth-card { width: 100%; padding: 1.25rem; }
+  .auth-card .viewer-brand { margin-bottom: 2rem; }
+  .auth-form input { min-height: 2.875rem; }
+  .auth-form .btn { min-height: 2.875rem; }
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(1rem); opacity: .7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .viewer-header { gap: 0.5rem; padding-right: 0.625rem; padding-left: 0.625rem; }
+  .viewer-brand { gap: 0.375rem; }
+  .viewer-brand-icon { width: 1.75rem; height: 1.75rem; }
+  .viewer-brand-mark { font-size: 0.75rem; letter-spacing: .08em; }
+  .viewer-header > .ml-auto { gap: 0.125rem; }
+  .viewer-header > .ml-auto .btn { padding-right: 0.5rem; padding-left: 0.5rem; }
+  .viewer-header > .ml-auto .btn svg { width: 1rem; height: 1rem; }
+  .header-account { display: none; }
+  .viewer-toolbar { top: 3.5rem; padding: 0.625rem; }
+  .viewer-toolbar .viewer-search { flex-basis: 100%; }
+  .viewer-toolbar .result-count { width: 100%; }
+  .detail-pane { padding-right: 0.75rem; padding-left: 0.75rem; }
+  .clip-meta { grid-template-columns: 1fr; }
+  .clip-meta > div:nth-child(3),
+  .clip-meta > div:nth-child(4) { grid-column: auto; }
+  .detail-section { margin-bottom: 1.5rem; }
+  .timeline-legend { gap: 0.75rem; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions .btn { width: 100%; flex-basis: auto; }
+}
+
+/* Workspace composition uses the same mobile rules as the legacy viewer
+   primitives, while retaining the existing API-driven screen. */
+@media (max-width: 900px) {
+  .workspace-shell { min-height: 100svh; }
+  .workspace-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+  .workspace-header > div:last-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: 0.25rem;
+  }
+  .workspace-header > div:last-child > .btn { min-height: 2.75rem; }
+  .workspace-header .header-account-copy { display: none; }
+  .workspace-header .header-action-label { display: none; }
+  .workspace-header .header-print { display: none; }
+  .workspace-progress {
+    position: sticky;
+    top: 4rem;
+    z-index: 20;
+  }
+  .workspace-grid { min-height: 0; }
+  .workspace-queue {
+    max-height: 42svh;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+  .workspace-queue .queue-clip { min-height: 4.25rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .workspace-detail {
+    max-height: none;
+    overflow: visible;
+    padding: 1.25rem 1rem 5rem;
+  }
+  .workspace-detail .grid { grid-template-columns: 1fr; }
+  .workspace-decision {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin-right: -1rem;
+    margin-left: -1rem;
+    padding-right: 1rem;
+    padding-left: 1rem;
+    box-shadow: 0 -0.5rem 1rem hsl(var(--background) / .14);
+  }
+  .workspace-decision .btn { min-height: 2.75rem; flex: 1 1 10rem; }
+}
+
+@media (max-width: 480px) {
+  .workspace-header { gap: 0.5rem; padding-right: 0.625rem; padding-left: 0.625rem; }
+  .workspace-header .viewer-brand-mark { font-size: 0.75rem; letter-spacing: .08em; }
+  .workspace-header > div:last-child > .btn { padding-right: 0.5rem; padding-left: 0.5rem; }
+  .workspace-header > div:last-child > .btn svg { width: 1rem; height: 1rem; }
+  .workspace-header .header-account { display: none; }
+  .workspace-progress { top: 3.5rem; }
+  .workspace-queue { max-height: 44svh; padding: 0.625rem; }
+  .workspace-detail { padding-right: 0.75rem; padding-left: 0.75rem; }
+  .workspace-decision {
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+}
