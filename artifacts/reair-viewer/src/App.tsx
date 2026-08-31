@@ -231,7 +231,6 @@ function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [decisions, setDecisions] = useState<Record<string, string>>({});
-  const [showSynopsis, setShowSynopsis] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const localQueryClient = useQueryClient();
@@ -267,7 +266,6 @@ function Workspace() {
     const pending = clips.findIndex((clip, index) => index > selectedIndex && !decisions[clip.id]);
     const nextIndex = pending >= 0 ? pending : Math.min(selectedIndex + 1, clips.length - 1);
     setSelectedId(clips[nextIndex]?.id ?? null);
-    setShowSynopsis(false);
   };
 
   const notes = selected ? [...selected.sensitiveNotes, ...selected.dateNotes] : [];
@@ -305,7 +303,7 @@ function Workspace() {
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
           <div className="mt-3 flex gap-2"><Input aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
           <div className="mt-3 h-[calc(100vh-14rem)] overflow-y-auto">
-            <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); setShowSynopsis(false); }}>
+            <div className="grid gap-1 pr-3">{view.map((clip) => <Button key={clip.id} variant={selectedId === clip.id ? 'default' : 'ghost'} className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setSelectedId(clip.id); }}>
               <span className="min-w-0"><span className="block font-mono text-xs">{clip.id}</span><span className="mt-1 block truncate text-xs opacity-75">{[...clip.hosts, ...clip.guests].join(' · ') || 'Host / guests not recorded'}</span><span className="mt-1.5 block font-mono text-[0.65rem] opacity-80">{decisions[clip.id] ?? `${clip.flagCount} archive note${clip.flagCount === 1 ? '' : 's'}`}</span></span>
             </Button>)}</div>
           </div>
@@ -316,27 +314,33 @@ function Workspace() {
           <h1 className="mt-3 font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{selected.id}</h1>
           <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{selected.shortSynopsis || 'No short synopsis was provided.'}</p>
 
-          {notes.length ? <>
-            <Alert variant="destructive" className="mt-7"><Flag /><AlertTitle>Could this material mislead a listener if aired now?</AlertTitle><AlertDescription>Review the sensitive and date notes below, then record an editorial disposition.</AlertDescription></Alert>
-            <p className="mt-6 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">Archive notes requiring a decision</p>
-            <div className="mt-3 grid gap-3">{notes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-3 sm:grid-cols-[5rem_1fr]"><Badge variant="destructive">{note.tc || '—'}</Badge><p className="text-sm leading-6">{note.text}</p></CardContent></Card>)}</div>
-          </> : <Alert className="mt-7"><Radio /><AlertTitle>No sensitive or date notes were recorded.</AlertTitle><AlertDescription>Check the supporting history, then clear this clip for the next air window.</AlertDescription></Alert>}
+          <section className="mt-7 border-y border-border py-5">
+            <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Full synopsis</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">{selected.longSynopsis || 'No full synopsis was provided.'}</p>
+          </section>
 
-          <section className="mt-6 bg-secondary p-5 text-secondary-foreground">
+          <section className="mt-7 bg-secondary p-5 text-secondary-foreground">
             <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-primary">Editorial disposition</h2>
             <div className="mt-4 flex flex-wrap gap-2">{['Needs edit', 'Hold for context', 'Clear for re-air'].map((option) => <Button key={option} variant={decisions[selected.id] === option ? 'default' : 'outline'} onClick={() => setDecisions((current) => ({ ...current, [selected.id]: option }))}>{option}</Button>)}</div>
             {decisions[selected.id] && <p className="mt-3 text-xs opacity-70">Recorded locally as “{decisions[selected.id]}”. No archive data was changed.</p>}
           </section>
         </section>
 
-        <aside className="bg-muted p-5 lg:col-span-2 xl:col-span-1">
+        <aside className="max-h-[calc(100vh-9rem)] overflow-y-auto bg-muted p-5 lg:col-span-2 xl:col-span-1">
           <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Supporting context</h2>
           <dl className="mt-3 divide-y divide-border border-y border-border">
             {[['Original airdate', formatDate(selected.originalAir)], ['Last aired', formatDate(selected.lastAir)], ['Host / guests', people.join(' · ') || 'Not recorded'], ['Date notes', selected.dateNotes.length ? selected.dateNotes.map((note) => `${note.tc ? `${note.tc} · ` : ''}${note.text}`).join(' · ') : 'None recorded'], ['Source', selected.source]].map(([label, value]) => <div className="py-3" key={label}><dt className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</dt><dd className="mt-1 text-sm leading-5">{value}</dd></div>)}
           </dl>
-          <div className="mt-6"><Button variant="ghost" className="w-full justify-between" onClick={() => setShowSynopsis((value) => !value)} aria-expanded={showSynopsis}>Full synopsis <ChevronDown className={showSynopsis ? 'rotate-180' : undefined} /></Button>{showSynopsis && <p className="pt-4 text-sm leading-6 text-muted-foreground">{selected.longSynopsis || 'No full synopsis was provided.'}</p>}</div>
-          <div className="mt-5 h-px bg-border" />
-          <div className="relative mt-5 h-12 border-b-2 border-accent">{notes.slice(0, 8).map((_, index) => <i key={index} className="absolute bottom-[-0.375rem] h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-muted" style={{ left: `${((index + 1) / (Math.min(notes.length, 8) + 1)) * 100}%` }} />)}</div>
+
+          <section className="mt-6 border-t border-border pt-5">
+            <h2 className="font-serif text-xs font-bold uppercase tracking-[0.16em]">Timed material</h2>
+            {notes.length ? <div className="mt-3 grid gap-2">{notes.map((note, index) => <Card key={`${note.tc}-${index}`}><CardContent className="grid gap-2 p-3"><Badge variant="destructive" className="w-fit">{note.tc || '—'}</Badge><p className="text-xs leading-5">{note.text}</p></CardContent></Card>)}</div> : <p className="mt-3 text-sm leading-6 text-muted-foreground">No timed notes were recorded for this clip.</p>}
+          </section>
+
+          <div className="mt-6 border-t border-border pt-5">
+            <p className="font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em]">Material timeline</p>
+            <div className="relative mt-5 h-12 border-b-2 border-accent">{notes.slice(0, 8).map((_, index) => <i key={index} className="absolute bottom-[-0.375rem] h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-muted" style={{ left: `${((index + 1) / (Math.min(notes.length, 8) + 1)) * 100}%` }} />)}</div>
+          </div>
           <div className="mt-2 flex justify-between font-mono text-[0.65rem] text-muted-foreground"><span>00:00</span><span>End</span></div>
         </aside>
       </div>
