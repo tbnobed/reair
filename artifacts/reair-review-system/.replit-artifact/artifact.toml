@@ -1,0 +1,19 @@
+kind = "design-system"
+previewPath = "/reair-review-system/"
+title = "Re-Air Review System"
+description = "A reusable editorial review design system extracted from the Re-Air Guided Review interface, with broadcast-console navigation, warm archival surfaces, signal-driven review states, and dense evidence-focused components."
+version = "1.0.0"
+id = "artifacts/reair-review-system"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/reair-review-system/" ]
+localPort = 23816
+
+[services.development]
+run = "pnpm --filter @workspace/reair-review-system run dev"
+
+[services.env]
+PORT = "23816"
+BASE_PATH = "/reair-review-system/"
