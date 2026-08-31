@@ -60,6 +60,7 @@ const queryClient = new QueryClient();
 type FilterKey = 'all' | 'review' | 'dates' | 'clear';
 type SortKey = 'new' | 'old' | 'flags' | 'id';
 type ArchiveView = 'list' | 'calendar';
+type DispositionFilter = 'all' | 'Needs edit' | 'Hold for context' | 'Clear for re-air';
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const roleLabels: Record<UserRole, string> = {
@@ -230,6 +231,7 @@ function Workspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [decisions, setDecisions] = useState<Record<string, string>>({});
+  const [dispositionFilter, setDispositionFilter] = useState<DispositionFilter>('all');
   const [showReports, setShowReports] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const localQueryClient = useQueryClient();
@@ -242,15 +244,16 @@ function Workspace() {
 
   const view = useMemo(() => clips
     .filter((clip) => textForClip(clip).includes(query.trim().toLowerCase()))
-    .sort((left, right) => (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0)), [clips, query]);
+    .filter((clip) => dispositionFilter === 'all' || decisions[clip.id] === dispositionFilter)
+    .sort((left, right) => (dateValue(right.date)?.getTime() ?? 0) - (dateValue(left.date)?.getTime() ?? 0)), [clips, query, dispositionFilter, decisions]);
 
   useEffect(() => {
     if (selectedId && view.some((clip) => clip.id === selectedId)) return;
     setSelectedId(view[0]?.id ?? null);
   }, [selectedId, view]);
 
-  const selected = clips.find((clip) => clip.id === selectedId) ?? null;
-  const selectedIndex = Math.max(0, clips.findIndex((clip) => clip.id === selectedId));
+  const selected = view.find((clip) => clip.id === selectedId) ?? view[0] ?? null;
+  const selectedIndex = Math.max(0, view.findIndex((clip) => clip.id === selected?.id));
   const reviewed = clips.filter((clip) => decisions[clip.id]).length;
   const signOut = () => logout.mutate(undefined, {
     onSuccess: () => localQueryClient.setQueryData(getGetCurrentUserQueryKey(), { authenticated: false, user: null }),
@@ -258,9 +261,9 @@ function Workspace() {
 
   const nextClip = () => {
     if (!selected) return;
-    const pending = clips.findIndex((clip, index) => index > selectedIndex && !decisions[clip.id]);
-    const nextIndex = pending >= 0 ? pending : Math.min(selectedIndex + 1, clips.length - 1);
-    setSelectedId(clips[nextIndex]?.id ?? null);
+    const pending = view.findIndex((clip, index) => index > selectedIndex && !decisions[clip.id]);
+    const nextIndex = pending >= 0 ? pending : Math.min(selectedIndex + 1, view.length - 1);
+    setSelectedId(view[nextIndex]?.id ?? null);
   };
 
   const notes = selected ? [...selected.sensitiveNotes, ...selected.dateNotes] : [];
@@ -288,8 +291,21 @@ function Workspace() {
         {!clipsLoading && !clipsError && canEditReports && <Button className="mt-5" onClick={() => setShowReports(true)}>Add data</Button>}
       </div>
     </section> : <>
-      <section className="grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress">
-        <div className="lg:col-start-2">
+      <section className="grid items-center gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:grid-cols-[1fr_minmax(14rem,24rem)_auto]" aria-label="Review progress and disposition filters">
+        <div className="flex flex-wrap items-center gap-1">
+          {(['Needs edit', 'Hold for context', 'Clear for re-air'] as Exclude<DispositionFilter, 'all'>[]).map((option) => (
+            <Button
+              key={option}
+              size="sm"
+              variant={dispositionFilter === option ? 'default' : 'outline'}
+              aria-pressed={dispositionFilter === option}
+              onClick={() => setDispositionFilter((current) => current === option ? 'all' : option)}
+            >
+              {option}
+            </Button>
+          ))}
+        </div>
+        <div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${reviewed} of ${clips.length} clips reviewed`} aria-valuemin={0} aria-valuemax={clips.length} aria-valuenow={reviewed}>
             <div className="h-full bg-primary transition-[width]" style={{ width: `${clips.length ? reviewed / clips.length * 100 : 0}%` }} />
           </div>
@@ -297,7 +313,7 @@ function Workspace() {
         <div className="font-mono text-xs">{reviewed} / {clips.length} resolved</div>
       </section>
 
-      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_47.5rem]">
+      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 lg:grid-cols-[26.25rem_minmax(0,1fr)] xl:grid-cols-[26.25rem_minmax(0,1fr)_47.5rem]">
         <aside className="bg-sidebar p-4 text-sidebar-foreground">
           <p className="px-1 font-serif text-[0.65rem] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/70">Review queue · real archive notes</p>
           <div className="mt-3 flex gap-2"><Input aria-label="Search review queue" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a clip or person" /><Button variant="secondary" size="icon" aria-label="Search"><Search /></Button></div>
