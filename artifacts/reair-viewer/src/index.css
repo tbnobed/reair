@@ -1127,6 +1127,7 @@ mark {
 @media (max-width: 900px) {
   .mobile-detail-heading {
     display: grid;
+    margin-top: 1.25rem;
     gap: 1rem;
   }
   .mobile-detail-title h1 {
@@ -1140,7 +1141,7 @@ mark {
     overflow-wrap: anywhere;
   }
   .mobile-context-summary {
-    margin-top: 1.25rem;
+    margin-top: .25rem;
     padding: 1rem;
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);

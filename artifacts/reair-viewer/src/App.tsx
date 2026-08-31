@@ -605,6 +605,15 @@ function Workspace() {
          <section className="workspace-detail min-w-0 max-h-[calc(100vh-9rem)] overflow-y-auto border-r border-border px-5 py-8 sm:px-8 lg:px-10 xl:px-12">
            <div className="mobile-detail-view">
              <Button data-testid="button-mobile-back-to-clips" className="mobile-back-to-clips" variant="ghost" size="sm" onClick={() => setMobileDetailOpen(false)}><ChevronLeft /> All clips</Button>
+             <section className="mobile-context-summary">
+               <div className="mobile-section-heading"><h2>Supporting context</h2><span>Shared archive record</span></div>
+               <dl>
+                 <div><dt>Clip date</dt><dd>{selected.date ? formatDate(selected.date) : 'Not listed'}</dd></div>
+                 <div><dt>Original airdate</dt><dd>{formatDate(selected.originalAir)}</dd></div>
+                 <div><dt>Last aired</dt><dd>{formatDate(selected.lastAir)}</dd></div>
+                 <div><dt>Host / guests</dt><dd>{people.join(' · ') || 'Not recorded'}</dd></div>
+               </dl>
+             </section>
              <div className="mobile-detail-heading">
                <div className="mobile-detail-title">
                  <p className="font-serif text-xs font-bold uppercase tracking-[0.16em] text-destructive">Now reviewing · clip {selectedIndex + 1} of {clips.length}</p>
@@ -612,12 +621,6 @@ function Workspace() {
                </div>
                <div className={`verdict ${selected.sensitiveNotes.length ? 'review' : 'clear'}`}><i />{selected.sensitiveNotes.length ? `Needs review — ${selected.sensitiveNotes.length} item${selected.sensitiveNotes.length > 1 ? 's' : ''}` : 'No date-sensitive items flagged'}</div>
              </div>
-             <section className="mobile-context-summary">
-               <div className="mobile-section-heading"><h2>Supporting context</h2><span>Shared archive record</span></div>
-               <dl>
-                 <div><dt>Host / guests</dt><dd>{people.join(' · ') || 'Not recorded'}</dd></div>
-               </dl>
-             </section>
              <div className="mobile-detail-tabs" role="tablist" aria-label="Clip information">
                <button id="tab-mobile-overview" data-testid="tab-mobile-overview" type="button" role="tab" aria-selected={mobileDetailTab === 'overview'} aria-controls="mobile-overview-panel" onClick={() => setMobileDetailTab('overview')}>Overview</button>
                <button id="tab-mobile-dated-information" data-testid="tab-mobile-dated-information" type="button" role="tab" aria-selected={mobileDetailTab === 'dated'} aria-controls="mobile-dated-panel" onClick={() => setMobileDetailTab('dated')}>Dated information <span>{notes.length}</span></button>
@@ -654,14 +657,6 @@ function Workspace() {
                  {decisions[selected.id] && <p className="mobile-help-text">Saved for every reviewer as “{decisions[selected.id]}”.</p>}
                </section>
              </div> : <div id="mobile-dated-panel" className="mobile-tab-panel" role="tabpanel" aria-labelledby="tab-mobile-dated-information">
-               <section className="mobile-detail-section">
-                 <div className="mobile-section-heading"><h2>Air dates</h2></div>
-                 <dl className="mobile-airdates">
-                   <div><dt>Clip date</dt><dd>{selected.date ? formatDate(selected.date) : 'Not listed'}</dd></div>
-                   <div><dt>Original airdate</dt><dd>{formatDate(selected.originalAir)}</dd></div>
-                   <div><dt>Last aired</dt><dd>{formatDate(selected.lastAir)}</dd></div>
-                 </dl>
-               </section>
                <section className="mobile-detail-section">
                  <div className="mobile-section-heading"><h2>Material timeline</h2><span>{timelineNotes.length} timecoded</span></div>
                  <div className="mobile-material-timeline">
